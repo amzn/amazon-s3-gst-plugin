@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/amzn/amazon-s3-gst-plugin.svg?branch=master)](https://travis-ci.org/amzn/amazon-s3-gst-plugin)
+
 ## Amazon S3 Gst Plugin
 
 A collection of [GStreamer](https://gstreamer.freedesktop.org/) elements to interact

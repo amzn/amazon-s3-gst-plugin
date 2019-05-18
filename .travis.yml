@@ -1,0 +1,35 @@
+dist: xenial
+sudo: required
+
+language:
+  - c
+  - cpp
+
+addons:
+  apt:
+    packages:
+      - gstreamer1.0-plugins-base
+      - libgstreamer1.0-dev
+      - cmake
+      - python3-pip
+      - python3-setuptools
+      - ninja-build
+
+install:
+  - pip3 install meson
+
+before_script:
+  - git clone --depth 1 https://github.com/aws/aws-sdk-cpp.git -b 1.7.89
+  - cmake -DBUILD_ONLY="s3;sts" aws-sdk-cpp
+  - make -j 4
+  - sudo make install
+
+script:
+  - meson build
+  - ninja -C build
+  - export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+  - ninja -C build test
+
+branches:
+  only:
+    - master
