@@ -19,6 +19,8 @@
 
 #include "gsts3multipartuploader.h"
 
+#include "gstawscredentials.hpp"
+
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentials.h>
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
@@ -42,42 +44,6 @@ namespace s3
 static bool is_null_or_empty(const char* str)
 {
     return str == nullptr || strcmp(str, "") == 0;
-}
-
-static bool assume_role(Aws::String role_arn, Aws::Auth::AWSCredentials& out_cred)
-{
-    Aws::STS::Model::AssumeRoleOutcome response = Aws::STS::STSClient()
-        .AssumeRole(Aws::STS::Model::AssumeRoleRequest().WithRoleArn(std::move(role_arn))
-        // Use access key of the currently used AWS account as a session name
-        .WithRoleSessionName(Aws::Auth::DefaultAWSCredentialsProviderChain().GetAWSCredentials().GetAWSAccessKeyId()));
-
-    if (!response.IsSuccess())
-    {
-        return false;
-    }
-
-    Aws::STS::Model::Credentials role_credentials = response.GetResult().GetCredentials();
-
-    out_cred = Aws::Auth::AWSCredentials(role_credentials.GetAccessKeyId(),
-                                         role_credentials.GetSecretAccessKey(),
-                                         role_credentials.GetSessionToken());
-    return true;
-}
-
-std::shared_ptr<Aws::Auth::AWSCredentialsProvider> create_credentials_provider(const char* role)
-{
-    if (is_null_or_empty(role))
-    {
-        return std::make_shared<Aws::Auth::DefaultAWSCredentialsProviderChain>();
-    }
-
-    Aws::Auth::AWSCredentials credentials;
-    if (!assume_role(role, credentials))
-    {
-        return nullptr;
-    }
-
-    return std::make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(std::move(credentials));
 }
 
 using BufferManager = Aws::Utils::ExclusiveOwnershipResourceManager<Aws::Utils::Array<uint8_t>*>;
@@ -345,7 +311,7 @@ bool MultipartUploader::_init_uploader(const GstS3UploaderConfig * config)
         client_config.caFile = config->ca_file;
     }
 
-    auto credentials_provider = create_credentials_provider(config->iam_role);
+    auto credentials_provider = gst_aws_credentials_create_provider(config->credentials);
     if (!credentials_provider)
     {
         return false;

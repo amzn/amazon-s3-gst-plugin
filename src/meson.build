@@ -4,18 +4,33 @@ gst_s3_elements_sources = [
   'gsts3uploader.c'
 ]
 
-multipart_uploader = static_library('multipartuploader',
-  ['gsts3multipartuploader.cpp'],
-  dependencies : [aws_cpp_sdk_s3_dep, aws_cpp_sdk_sts_dep, glib_dep],
-  install : false)
+gst_s3_public_headers = [
+  'gstawscredentials.h',
+  'gstawscredentials.hpp'
+]
 
-multipart_uploader_dep = declare_dependency(link_with : multipart_uploader,
+credentials = library('gstawscredentials-@0@'.format(apiversion),
+  ['gstawscredentials.cpp'],
+  dependencies : [aws_cpp_sdk_sts_dep, gst_dep],
+  install : true
+)
+
+credentials_dep = declare_dependency(link_with : credentials,
   include_directories : [include_directories('.')]
 )
 
+multipart_uploader = static_library('multipartuploader',
+  ['gsts3multipartuploader.cpp'],
+  dependencies : [aws_cpp_sdk_s3_dep, glib_dep],
+  install : false
+)
+
+multipart_uploader_dep = declare_dependency(link_with : multipart_uploader,
+  include_directories : [include_directories('.')])
+
 gst_s3_elements = library('gsts3elements',
   gst_s3_elements_sources,
-  dependencies : [gst_dep, gst_base_dep, multipart_uploader_dep],
+  dependencies : [gst_dep, gst_base_dep, multipart_uploader_dep, credentials_dep],
   include_directories : [configinc],
   install : true,
   install_dir : plugins_install_dir,
@@ -25,3 +40,5 @@ s3elements_dep = declare_dependency(link_with : gst_s3_elements,
   include_directories : [include_directories('.')],
   dependencies : [gst_dep, gst_base_dep]
 )
+
+install_headers(gst_s3_public_headers, subdir : 'gstreamer-1.0/gst/aws')

@@ -1,0 +1,13 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@/gstreamer-@GST_API_VERSION@
+datarootdir=${prefix}/share
+datadir=${datarootdir}
+
+Name: GStreamer AWS library
+Description: Amazon Web Services utility library for GStreamer plugins
+Requires: gstreamer-@GST_API_VERSION@ aws-cpp-sdk-sts
+Version: @VERSION@
+Libs: -L${libdir} -lgstawscredentials-@GST_API_VERSION@
+Cflags: -I${includedir}

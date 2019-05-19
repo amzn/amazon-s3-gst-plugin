@@ -8,6 +8,8 @@ aws_cpp_sdk_req = '>= 1.7'
 
 gst_s3_version = meson.project_version()
 
+apiversion = '1.0'
+
 glib_dep = dependency('glib-2.0')
 gst_dep = dependency('gstreamer-1.0', version : gst_req,
   fallback : ['gstreamer', 'gst_dep'])
@@ -30,3 +32,4 @@ configure_file(output : 'config.h', configuration : core_conf)
 
 subdir('src')
 subdir('tests')
+subdir('pkgconfig')
