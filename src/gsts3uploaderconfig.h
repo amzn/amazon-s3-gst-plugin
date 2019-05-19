@@ -21,6 +21,8 @@
 
 #include <glib.h>
 
+#include "gstawscredentials.h"
+
 G_BEGIN_DECLS
 
 #define GST_S3_UPLOADER_CONFIG_DEFAULT_BUFFER_SIZE 5 * 1024 * 1024
@@ -33,7 +35,7 @@ typedef struct {
   gchar * key;
   gchar * content_type;
   gchar * ca_file;
-  gchar * iam_role;
+  GstAWSCredentials * credentials;
   gsize buffer_size;
   gsize buffer_count;
   gboolean init_aws_sdk;

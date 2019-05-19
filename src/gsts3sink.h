@@ -23,6 +23,7 @@
 #include <gst/base/gstbasesink.h>
 
 #include "gsts3uploader.h"
+#include "gstawscredentials.h"
 
 G_BEGIN_DECLS
 

@@ -119,7 +119,7 @@ push_bytes_finalize:
 static GstElement *
 setup_default_s3_sink (GstS3Uploader *uploader)
 {
-  GstElement *sink = gst_element_factory_make("s3sink", "sink");
+  GstElement *sink = gst_element_factory_make ("s3sink", "sink");
 
   if (sink) {
     g_object_set (sink,
@@ -134,7 +134,7 @@ setup_default_s3_sink (GstS3Uploader *uploader)
 
 GST_START_TEST (test_no_bucket_and_key_then_start_should_fail)
 {
-  GstElement *sink = gst_element_factory_make("s3sink", "sink");
+  GstElement *sink = gst_element_factory_make ("s3sink", "sink");
   GstStateChangeReturn ret;
 
   fail_if (sink == NULL);
@@ -155,9 +155,8 @@ GST_START_TEST (test_change_properties_after_start_should_fail)
   const gchar *key = "key";
   const gchar *content_type = "content-type";
   const gchar *ca_file = "/path/to/ca";
-  const gchar *iam_role = "some_role";
   gint buffer_size = 1024*1024*10;
-  gchar *new_bucket = NULL, *new_key = NULL, *new_content_type = NULL, *new_ca_file = NULL, *new_iam_role = NULL;
+  gchar *new_bucket = NULL, *new_key = NULL, *new_content_type = NULL, *new_ca_file = NULL;
   gint new_buffer_size = 0;
 
   fail_if (sink == NULL);
@@ -169,7 +168,6 @@ GST_START_TEST (test_change_properties_after_start_should_fail)
     "key", key,
     "content-type", content_type,
     "ca-file", ca_file,
-    "iam-role", iam_role,
     "buffer-size", buffer_size,
     NULL);
 
@@ -181,7 +179,6 @@ GST_START_TEST (test_change_properties_after_start_should_fail)
     "key", "new-key",
     "content-type", "new-content-type",
     "ca-file", "new-ca-file",
-    "iam-role", "new-iam-role",
     "buffer-size", buffer_size * 2,
     NULL);
 
@@ -190,7 +187,6 @@ GST_START_TEST (test_change_properties_after_start_should_fail)
     "key", &new_key,
     "content-type", &new_content_type,
     "ca-file", &new_ca_file,
-    "iam-role", &new_iam_role,
     "buffer-size", &new_buffer_size,
     NULL);
 
@@ -198,7 +194,6 @@ GST_START_TEST (test_change_properties_after_start_should_fail)
   fail_unless_equals_string(key, new_key);
   fail_unless_equals_string(content_type, new_content_type);
   fail_unless_equals_string(ca_file, new_ca_file);
-  fail_unless_equals_string(iam_role, new_iam_role);
   fail_unless_equals_int(buffer_size, new_buffer_size);
 
   gst_element_set_state (sink, GST_STATE_NULL);
@@ -208,7 +203,6 @@ GST_START_TEST (test_change_properties_after_start_should_fail)
   g_free(new_key);
   g_free(new_content_type);
   g_free(new_ca_file);
-  g_free(new_iam_role);
 }
 GST_END_TEST
 

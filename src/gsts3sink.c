@@ -60,9 +60,9 @@ enum
   PROP_CONTENT_TYPE,
   PROP_CA_FILE,
   PROP_REGION,
-  PROP_IAM_ROLE,
   PROP_BUFFER_SIZE,
   PROP_INIT_AWS_SDK,
+  PROP_CREDENTIALS,
   PROP_LAST
 };
 
@@ -96,7 +96,6 @@ gst_s3_sink_class_init (GstS3SinkClass * klass)
   GstBaseSinkClass *gstbasesink_class = GST_BASE_SINK_CLASS (klass);
 
   gobject_class->dispose = gst_s3_sink_dispose;
-
   gobject_class->set_property = gst_s3_sink_set_property;
   gobject_class->get_property = gst_s3_sink_get_property;
 
@@ -125,11 +124,6 @@ g_object_class_install_property (gobject_class, PROP_REGION,
           "An AWS region (e.g. eu-west-2)", NULL,
           G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
-  g_object_class_install_property (gobject_class, PROP_IAM_ROLE,
-      g_param_spec_string ("iam-role", "IAM Role",
-          "A role to assume by the current account", NULL,
-          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
-
   g_object_class_install_property (gobject_class, PROP_BUFFER_SIZE,
       g_param_spec_uint ("buffer-size", "Buffering size",
           "Size of buffer in number of bytes", MIN_BUFFER_SIZE,
@@ -141,6 +135,11 @@ g_object_class_install_property (gobject_class, PROP_REGION,
           "Whether to initialize AWS SDK",
           GST_S3_UPLOADER_CONFIG_DEFAULT_INIT_AWS_SDK,
           G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_CREDENTIALS,
+      g_param_spec_boxed ("aws-credentials", "AWS credentials",
+          "The AWS credentials to use", GST_TYPE_AWS_CREDENTIALS,
+          G_PARAM_WRITABLE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
   gst_element_class_set_static_metadata (gstelement_class,
       "S3 Sink",
@@ -168,6 +167,7 @@ static void
 gst_s3_sink_init (GstS3Sink * s3sink)
 {
   s3sink->config = GST_S3_UPLOADER_CONFIG_INIT;
+  s3sink->config.credentials = gst_aws_credentials_new_default ();
   s3sink->uploader = NULL;
   s3sink->is_started = FALSE;
 
@@ -182,7 +182,7 @@ gst_s3_sink_release_config (GstS3UploaderConfig * config)
   g_free (config->key);
   g_free (config->content_type);
   g_free (config->ca_file);
-  g_free (config->iam_role);
+  gst_aws_credentials_free (config->credentials);
 
   *config = GST_S3_UPLOADER_CONFIG_INIT;
 }
@@ -246,10 +246,6 @@ gst_s3_sink_set_property (GObject * object, guint prop_id,
       gst_s3_sink_set_string_property (sink, g_value_get_string (value),
           &sink->config.region, "region");
       break;
-    case PROP_IAM_ROLE:
-      gst_s3_sink_set_string_property (sink, g_value_get_string (value),
-          &sink->config.iam_role, "iam-role");
-      break;
     case PROP_BUFFER_SIZE:
       if (sink->is_started) {
         // TODO: this could be supported in the future
@@ -261,6 +257,11 @@ gst_s3_sink_set_property (GObject * object, guint prop_id,
       break;
     case PROP_INIT_AWS_SDK:
       sink->config.init_aws_sdk = g_value_get_boolean (value);
+      break;
+    case PROP_CREDENTIALS:
+      if (sink->config.credentials)
+        gst_aws_credentials_free (sink->config.credentials);
+      sink->config.credentials = gst_aws_credentials_copy (g_value_get_boxed (value));
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -289,9 +290,6 @@ gst_s3_sink_get_property (GObject * object, guint prop_id, GValue * value,
       break;
     case PROP_REGION:
       g_value_set_string (value, sink->config.region);
-      break;
-    case PROP_IAM_ROLE:
-      g_value_set_string (value, sink->config.iam_role);
       break;
     case PROP_BUFFER_SIZE:
       g_value_set_uint (value, sink->config.buffer_size);
