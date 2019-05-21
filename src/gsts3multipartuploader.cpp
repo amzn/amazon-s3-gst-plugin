@@ -29,6 +29,8 @@
 #include <aws/core/utils/stream/PreallocatedStreamBuf.h>
 #include <aws/s3/model/CompleteMultipartUploadRequest.h>
 #include <aws/s3/model/CreateMultipartUploadRequest.h>
+#include <aws/s3/model/GetBucketLocationRequest.h>
+#include <aws/s3/model/GetBucketLocationResult.h>
 #include <aws/s3/model/UploadPartRequest.h>
 #include <aws/s3/S3Client.h>
 #include <aws/sts/model/AssumeRoleRequest.h>
@@ -40,6 +42,20 @@ namespace aws
 {
 namespace s3
 {
+
+static bool get_bucket_location(const char* bucket_name, Aws::String& location)
+{
+    Aws::S3::S3Client client(Aws::Client::ClientConfiguration(), Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never, false);
+
+    auto outcome = client.GetBucketLocation(Aws::S3::Model::GetBucketLocationRequest().WithBucket(bucket_name));
+    if (!outcome.IsSuccess())
+    {
+        return false;
+    }
+
+    location = Aws::S3::Model::BucketLocationConstraintMapper::GetNameForBucketLocationConstraint(outcome.GetResult().GetLocationConstraint());
+    return true;
+}
 
 static bool is_null_or_empty(const char* str)
 {
@@ -302,7 +318,19 @@ bool MultipartUploader::_init_uploader(const GstS3UploaderConfig * config)
     }
 
     Aws::Client::ClientConfiguration client_config;
-    if (!is_null_or_empty(config->region))
+    Aws::String region;
+    if (is_null_or_empty(config->region))
+    {
+        if (!get_bucket_location(config->bucket, region))
+        {
+            // TODO report warning
+        }
+        else if (!region.empty())
+        {
+            client_config.region = std::move(region);
+        }
+    }
+    else
     {
         client_config.region = config->region;
     }

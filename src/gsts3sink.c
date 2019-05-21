@@ -121,7 +121,8 @@ gst_s3_sink_class_init (GstS3SinkClass * klass)
 
 g_object_class_install_property (gobject_class, PROP_REGION,
       g_param_spec_string ("region", "AWS Region",
-          "An AWS region (e.g. eu-west-2)", NULL,
+          "An AWS region (e.g. eu-west-2). Leave empty for region-autodetection "
+          "(Please note region-autodetection requires an extra network call)", NULL,
           G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_BUFFER_SIZE,
