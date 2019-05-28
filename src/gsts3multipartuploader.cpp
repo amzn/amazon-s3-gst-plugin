@@ -43,9 +43,9 @@ namespace aws
 namespace s3
 {
 
-static bool get_bucket_location(const char* bucket_name, Aws::String& location)
+static bool get_bucket_location(const char* bucket_name, const Aws::Client::ClientConfiguration& client_config, Aws::String& location)
 {
-    Aws::S3::S3Client client(Aws::Client::ClientConfiguration(), Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never, false);
+    Aws::S3::S3Client client(client_config, Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never, false);
 
     auto outcome = client.GetBucketLocation(Aws::S3::Model::GetBucketLocationRequest().WithBucket(bucket_name));
     if (!outcome.IsSuccess())
@@ -318,10 +318,14 @@ bool MultipartUploader::_init_uploader(const GstS3UploaderConfig * config)
     }
 
     Aws::Client::ClientConfiguration client_config;
-    Aws::String region;
+    if (!is_null_or_empty(config->ca_file))
+    {
+        client_config.caFile = config->ca_file;
+    }
     if (is_null_or_empty(config->region))
     {
-        if (!get_bucket_location(config->bucket, region))
+        Aws::String region;
+        if (!get_bucket_location(config->bucket, client_config, region))
         {
             // TODO report warning
         }
@@ -333,10 +337,6 @@ bool MultipartUploader::_init_uploader(const GstS3UploaderConfig * config)
     else
     {
         client_config.region = config->region;
-    }
-    if (!is_null_or_empty(config->ca_file))
-    {
-        client_config.caFile = config->ca_file;
     }
 
     auto credentials_provider = gst_aws_credentials_create_provider(config->credentials);
