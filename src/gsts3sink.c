@@ -45,7 +45,7 @@ static GstStaticPadTemplate sinktemplate = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS_ANY);
 
-GST_DEBUG_CATEGORY_STATIC (gst_s3_sink_debug);
+GST_DEBUG_CATEGORY (gst_s3_sink_debug);
 #define GST_CAT_DEFAULT gst_s3_sink_debug
 
 #define MIN_BUFFER_SIZE 5 * 1024 * 1024

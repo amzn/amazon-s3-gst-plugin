@@ -25,6 +25,8 @@
 #include <aws/core/auth/AWSCredentials.h>
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
 #include <aws/core/utils/HashingUtils.h>
+#include <aws/core/utils/logging/AWSLogging.h>
+#include <aws/core/utils/logging/LogSystemInterface.h>
 #include <aws/core/utils/ResourceManager.h>
 #include <aws/core/utils/stream/PreallocatedStreamBuf.h>
 #include <aws/s3/model/CompleteMultipartUploadRequest.h>
@@ -36,12 +38,73 @@
 #include <aws/sts/model/AssumeRoleRequest.h>
 #include <aws/sts/STSClient.h>
 
+#include <gst/gst.h>
+
+GST_DEBUG_CATEGORY_EXTERN(gst_s3_sink_debug);
+
 namespace gst
 {
 namespace aws
 {
 namespace s3
 {
+class Logger : public Aws::Utils::Logging::LogSystemInterface
+{
+public:
+    Aws::Utils::Logging::LogLevel GetLogLevel(void) const
+    {
+        return _to_aws_log_level(gst_debug_category_get_threshold(gst_s3_sink_debug));
+    }
+
+    void Log(Aws::Utils::Logging::LogLevel log_level, const char* tag, const char* format, ...) override
+    {
+        GstDebugLevel level = _to_gst_log_level(log_level);
+        va_list varargs;
+        va_start (varargs, format);
+
+        if (G_UNLIKELY ((level) <= GST_LEVEL_MAX && (level) <= _gst_debug_min))
+        {
+            gst_debug_log_valist(gst_s3_sink_debug, level, "", tag, 0, NULL, format, varargs);
+        }
+        va_end (varargs);
+    }
+    
+    void LogStream(Aws::Utils::Logging::LogLevel log_level, const char* tag, const Aws::OStringStream &message_stream) override
+    {
+        Log(log_level, tag, message_stream.str().c_str());
+    }
+
+private:
+    static Aws::Utils::Logging::LogLevel _to_aws_log_level(GstDebugLevel level)
+    {
+        using Aws::Utils::Logging::LogLevel;
+        switch (level)
+        {
+            case GST_LEVEL_NONE: return LogLevel::Off;
+            case GST_LEVEL_ERROR: return LogLevel::Error;
+            case GST_LEVEL_WARNING: return LogLevel::Warn;
+            case GST_LEVEL_FIXME:
+            case GST_LEVEL_INFO: return LogLevel::Info;
+            case GST_LEVEL_DEBUG: return LogLevel::Debug;
+            default: return LogLevel::Trace;
+        }
+    }
+
+    static GstDebugLevel _to_gst_log_level(Aws::Utils::Logging::LogLevel level)
+    {
+        using Aws::Utils::Logging::LogLevel;
+        switch (level)
+        {
+            case LogLevel::Off: return GST_LEVEL_NONE;
+            case LogLevel::Fatal:
+            case LogLevel::Error: return GST_LEVEL_ERROR;
+            case LogLevel::Warn: return GST_LEVEL_WARNING;
+            case LogLevel::Info: return GST_LEVEL_INFO;
+            case LogLevel::Debug: return GST_LEVEL_DEBUG;
+            default: return GST_LEVEL_TRACE;
+        }
+    }
+};
 
 static bool get_bucket_location(const char* bucket_name, const Aws::Client::ClientConfiguration& client_config, Aws::String& location)
 {
@@ -296,6 +359,7 @@ MultipartUploader::~MultipartUploader()
     if (_init_sdk)
     {
         Aws::ShutdownAPI(Aws::SDKOptions {});
+        Aws::Utils::Logging::ShutdownAWSLogging();
     }
 }
 
@@ -313,6 +377,7 @@ bool MultipartUploader::_init_uploader(const GstS3UploaderConfig * config)
 {
     if (_init_sdk)
     {
+        Aws::Utils::Logging::InitializeAWSLogging(std::make_shared<Logger>());
         Aws::SDKOptions options;
         Aws::InitAPI(options);
     }

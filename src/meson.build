@@ -21,7 +21,7 @@ credentials_dep = declare_dependency(link_with : credentials,
 
 multipart_uploader = static_library('multipartuploader',
   ['gsts3multipartuploader.cpp'],
-  dependencies : [aws_cpp_sdk_s3_dep, glib_dep],
+  dependencies : [aws_cpp_sdk_s3_dep, gst_dep],
   install : false
 )
 
