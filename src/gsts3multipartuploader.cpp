@@ -520,7 +520,7 @@ void MultipartUploader::_handle_upload_completed(const Aws::S3::S3Client*,
 
     auto original_stream_buffer = (Aws::Utils::Stream::PreallocatedStreamBuf*)request.GetBody()->rdbuf();
     context->get_buffer_manager()->Release(original_stream_buffer->GetBuffer());
-    Aws::Delete(original_stream_buffer);
+    delete original_stream_buffer;
 
     auto states = context->get_part_states();
     int part_number = context->get_part_number();
