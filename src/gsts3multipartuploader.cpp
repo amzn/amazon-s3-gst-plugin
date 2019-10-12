@@ -51,7 +51,7 @@ namespace s3
 class Logger : public Aws::Utils::Logging::LogSystemInterface
 {
 public:
-    Aws::Utils::Logging::LogLevel GetLogLevel(void) const
+    Aws::Utils::Logging::LogLevel GetLogLevel(void) const override
     {
         return _to_aws_log_level(gst_debug_category_get_threshold(gst_s3_sink_debug));
     }
@@ -68,10 +68,14 @@ public:
         }
         va_end (varargs);
     }
-    
+
     void LogStream(Aws::Utils::Logging::LogLevel log_level, const char* tag, const Aws::OStringStream &message_stream) override
     {
         Log(log_level, tag, message_stream.str().c_str());
+    }
+
+    void Flush() override
+    {
     }
 
 private:
@@ -125,7 +129,7 @@ static bool is_null_or_empty(const char* str)
     return str == nullptr || strcmp(str, "") == 0;
 }
 
-using BufferManager = Aws::Utils::ExclusiveOwnershipResourceManager<Aws::Utils::Array<uint8_t>*>;
+using BufferManager = Aws::Utils::ExclusiveOwnershipResourceManager<uint8_t*>;
 
 class PartState
 {
@@ -330,6 +334,7 @@ private:
     std::shared_ptr<PartStateCollection> _part_states;
 
     std::shared_ptr<BufferManager> _buffer_manager;
+    size_t _buffer_count = 0;
 
     int _part_counter = 0;
     bool _verify_hash = false;
@@ -361,15 +366,24 @@ MultipartUploader::~MultipartUploader()
         Aws::ShutdownAPI(Aws::SDKOptions {});
         Aws::Utils::Logging::ShutdownAWSLogging();
     }
+
+    if (_buffer_manager)
+    {
+        for (auto buffer : _buffer_manager->ShutdownAndWait(_buffer_count))
+        {
+            free(buffer);
+        }
+    }
 }
 
 void MultipartUploader::_init_buffer_manager(size_t buffer_count, size_t buffer_size)
 {
     _buffer_manager = std::make_shared<BufferManager>();
+    _buffer_count = buffer_count;
 
     for (size_t i = 0; i < buffer_count; i++)
     {
-        _buffer_manager->PutResource(new Aws::Utils::Array<uint8_t>(buffer_size));
+        _buffer_manager->PutResource(reinterpret_cast<uint8_t*>(malloc(buffer_size)));
     }
 }
 
@@ -434,7 +448,7 @@ bool MultipartUploader::_init_uploader(const GstS3UploaderConfig * config)
 std::unique_ptr<Aws::IOStream> MultipartUploader::_create_stream(const char* data, size_t size)
 {
     auto buffer = _buffer_manager->Acquire();
-    memcpy(buffer->GetUnderlyingData(), data, size);
+    memcpy(buffer, data, size);
 
     return std::unique_ptr<Aws::IOStream>(
         new Aws::IOStream(new Aws::Utils::Stream::PreallocatedStreamBuf(buffer, size)));
