@@ -19,7 +19,7 @@ install:
   - pip3 install meson
 
 before_script:
-  - git clone --depth 1 https://github.com/aws/aws-sdk-cpp.git -b 1.7.89
+  - git clone --depth 1 https://github.com/aws/aws-sdk-cpp.git -b 1.7.202
   - cmake -DBUILD_ONLY="s3;sts" aws-sdk-cpp
   - make -j 4
   - sudo make install
