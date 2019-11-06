@@ -5,6 +5,26 @@
 A collection of [GStreamer](https://gstreamer.freedesktop.org/) elements to interact
 with the [Amazon Simple Storage Service (S3)](https://aws.amazon.com/s3/).
 
+## Getting started
+### Setting up dependencies
+Following dependencies are required to build the project:
+ * [GStreamer](https://gstreamer.freedesktop.org/): [core](https://gitlab.freedesktop.org/gstreamer/gstreamer), [base plugins](https://gitlab.freedesktop.org/gstreamer/gst-plugins-base)  
+ see the [GStreamer's documentation](https://gstreamer.freedesktop.org/documentation/installing/index.html?gi-language=c) for installation instructions
+ * [Meson build system](https://mesonbuild.com/)
+ * [AWS SDK for C++](https://aws.amazon.com/sdk-for-cpp/)
+
+### Building the project
+```bash
+$ meson build
+$ cd build
+$ ninja
+$ sudo ninja install
+```
+After executing commands above, the plugin (`libgsts3elements.so`) should be installed in the default GStreamer's plugin path. It can also be found in the build directory, and used by specifying the plugin path:
+```bash 
+$ GST_PLUGIN_PATH=src gst-inspect-1.0 s3sink
+```
+
 ## Elements
 * s3sink - streams the multimedia to a specified bucket.
 
