@@ -70,13 +70,17 @@ gst_aws_credentials_free (GstAWSCredentials * credentials)
   delete credentials;
 }
 
-#define CMP_STRING(str1, str2) strncmp (str1, str2, strlen (str1))
+static bool
+strings_equal(const gchar* str1, const gchar* str2, size_t len2)
+{
+	return strlen(str1) == len2 && strncmp(str1, str2, len2) == 0;
+}
 
 static bool
 is_null_or_empty(const char* str)
- {
-     return str == NULL || strcmp(str, "") == 0;
- }
+{
+  return str == NULL || strcmp(str, "") == 0;
+}
 
 static std::unique_ptr<AWSCredentialsProvider>
 _gst_aws_credentials_assume_role(const gchar * role_arn, std::shared_ptr<AWSCredentialsProvider> base_provider)
@@ -138,18 +142,18 @@ _gst_aws_credentials_provider_from_string(const gchar * str)
     if (!value) {
       GST_WARNING ("Expected format property 'param=value', was: '%s'", *param);
     } else {
-      gint len = value - *param;
+      size_t len = value - *param;
       value++;
-      if (CMP_STRING ("access-key-id", *param) == 0) {
+      if (strings_equal ("access-key-id", *param, len)) {
         access_key_id = value;
-      } else if (CMP_STRING ("secret-access-key", *param) == 0) {
+      } else if (strings_equal ("secret-access-key", *param, len)) {
         secret_access_key = value;
-      } else if (CMP_STRING ("iam-role", *param) == 0) {
+      } else if (strings_equal ("iam-role", *param, len)) {
         iam_role = value;
-      } else if (CMP_STRING ("session-token", *param) == 0) {
+      } else if (strings_equal ("session-token", *param, len)) {
         session_token = value;
       } else {
-        GST_WARNING ("Unknown parameter '%.*s'", len, *param);
+        GST_WARNING ("Unknown parameter '%.*s'", (int)len, *param);
       }
     }
     param++;
