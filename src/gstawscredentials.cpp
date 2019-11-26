@@ -138,7 +138,7 @@ _gst_aws_credentials_provider_from_string(const gchar * str)
   const gchar *session_token = NULL;
 
   while (*param) {
-    const gchar *value = g_strrstr (*param, "=");
+    const gchar *value = g_strstr_len (*param, -1, "=");
     if (!value) {
       GST_WARNING ("Expected format property 'param=value', was: '%s'", *param);
     } else {
