@@ -105,7 +105,7 @@ gst_s3_sink_class_init (GstS3SinkClass * klass)
           G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_KEY,
-      g_param_spec_string ("key", "S3 key",
+      g_param_spec_string ("location", "S3 key",
           "The key of the file to write", NULL,
           G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
@@ -233,7 +233,7 @@ gst_s3_sink_set_property (GObject * object, guint prop_id,
       break;
     case PROP_KEY:
       gst_s3_sink_set_string_property (sink, g_value_get_string (value),
-          &sink->config.key, "key");
+          &sink->config.key, "location");
       break;
     case PROP_CONTENT_TYPE:
       gst_s3_sink_set_string_property (sink, g_value_get_string (value),

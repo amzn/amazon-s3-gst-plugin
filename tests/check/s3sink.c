@@ -124,7 +124,7 @@ setup_default_s3_sink (GstS3Uploader *uploader)
   if (sink) {
     g_object_set (sink,
       "bucket", "some-bucket",
-      "key", "some-key",
+      "location", "some-key",
       NULL);
     GST_S3_SINK (sink)->uploader = uploader;
   }
@@ -152,7 +152,7 @@ GST_START_TEST (test_change_properties_after_start_should_fail)
   GstElement *sink = gst_element_factory_make("s3sink", "sink");
   GstStateChangeReturn ret;
   const gchar *bucket = "bucket";
-  const gchar *key = "key";
+  const gchar *key = "location";
   const gchar *content_type = "content-type";
   const gchar *ca_file = "/path/to/ca";
   gint buffer_size = 1024*1024*10;
@@ -165,7 +165,7 @@ GST_START_TEST (test_change_properties_after_start_should_fail)
 
   g_object_set(sink,
     "bucket", bucket,
-    "key", key,
+    "location", key,
     "content-type", content_type,
     "ca-file", ca_file,
     "buffer-size", buffer_size,
@@ -176,7 +176,7 @@ GST_START_TEST (test_change_properties_after_start_should_fail)
 
   g_object_set(sink,
     "bucket", "new-bucket",
-    "key", "new-key",
+    "location", "new-key",
     "content-type", "new-content-type",
     "ca-file", "new-ca-file",
     "buffer-size", buffer_size * 2,
@@ -184,7 +184,7 @@ GST_START_TEST (test_change_properties_after_start_should_fail)
 
   g_object_get(sink,
     "bucket", &new_bucket,
-    "key", &new_key,
+    "location", &new_key,
     "content-type", &new_content_type,
     "ca-file", &new_ca_file,
     "buffer-size", &new_buffer_size,
