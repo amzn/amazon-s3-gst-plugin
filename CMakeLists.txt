@@ -18,6 +18,7 @@ find_package(PkgConfig REQUIRED)
 set(GSTREAMER_MINIMUM_VERSION 1.0.0)
 
 pkg_check_modules(GST1_TEST gstreamer-1.0)
+pkg_check_modules(GST_VIDEO REQUIRED gstreamer-video-1.0)
 if (GST1_TEST_FOUND AND NOT ${GST1_TEST_VERSION} VERSION_LESS ${GSTREAMER_MINIMUM_VERSION} )
     pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0)
     pkg_check_modules(GSTREAMER-BASE REQUIRED gstreamer-base-1.0)
@@ -72,6 +73,7 @@ set(GST_LIBRARY_DIRS
 set(S3_LIBRARIES
     ${GST_LIBRARIES}
     ${GST_APP_LIBRARIES}
+    ${GST_VIDEO_LIBRARIES}
     ${GLIB2_LIBRARIES}
 )
 
