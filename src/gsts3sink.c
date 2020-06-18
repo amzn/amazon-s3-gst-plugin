@@ -209,6 +209,7 @@ gst_s3_sink_release_config (GstS3UploaderConfig * config)
   g_free (config->bucket);
   g_free (config->key);
   g_free (config->content_type);
+  g_free (config->ca_file);
   g_free (config->aws_sdk_endpoint);
   gst_aws_credentials_free (config->credentials);
 
