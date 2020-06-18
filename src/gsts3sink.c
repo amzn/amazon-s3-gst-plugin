@@ -63,6 +63,10 @@ enum
   PROP_BUFFER_SIZE,
   PROP_INIT_AWS_SDK,
   PROP_CREDENTIALS,
+  PROP_AWS_SDK_ENDPOINT,
+  PROP_AWS_SDK_USE_HTTP,
+  PROP_AWS_SDK_VERIFY_SSL,
+  PROP_AWS_SDK_S3_SIGN_PAYLOAD,
   PROP_LAST
 };
 
@@ -142,6 +146,29 @@ g_object_class_install_property (gobject_class, PROP_REGION,
           "The AWS credentials to use", GST_TYPE_AWS_CREDENTIALS,
           G_PARAM_WRITABLE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property (gobject_class, PROP_AWS_SDK_ENDPOINT,
+      g_param_spec_string ("aws-sdk-endpoint", "AWS SDK Endpoint",
+          "AWS SDK endpoint override (ip:port)", NULL,
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_AWS_SDK_USE_HTTP,
+      g_param_spec_boolean ("aws-sdk-use-http", "AWS SDK Use HTTP",
+          "Whether to enable http for the AWS SDK (default https)",
+          GST_S3_UPLOADER_CONFIG_DEFAULT_PROP_AWS_SDK_USE_HTTP,
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_AWS_SDK_VERIFY_SSL,
+      g_param_spec_boolean ("aws-sdk-verify-ssl", "AWS SDK Verify SSL",
+          "Whether to enable/disable tls validation for the AWS SDK",
+          GST_S3_UPLOADER_CONFIG_DEFAULT_PROP_AWS_SDK_VERIFY_SSL,
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_AWS_SDK_S3_SIGN_PAYLOAD,
+      g_param_spec_boolean ("aws-sdk-s3-sign-payload", "AWS SDK S3 Sign Payload",
+          "Whether to have the AWS SDK S3 client sign payloads using the Auth v4 Signer",
+          GST_S3_UPLOADER_CONFIG_DEFAULT_PROP_AWS_SDK_S3_SIGN_PAYLOAD,
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+
   gst_element_class_set_static_metadata (gstelement_class,
       "S3 Sink",
       "Sink/S3", "Write stream to an Amazon S3 bucket",
@@ -182,7 +209,7 @@ gst_s3_sink_release_config (GstS3UploaderConfig * config)
   g_free (config->bucket);
   g_free (config->key);
   g_free (config->content_type);
-  g_free (config->ca_file);
+  g_free (config->aws_sdk_endpoint);
   gst_aws_credentials_free (config->credentials);
 
   *config = GST_S3_UPLOADER_CONFIG_INIT;
@@ -264,6 +291,19 @@ gst_s3_sink_set_property (GObject * object, guint prop_id,
         gst_aws_credentials_free (sink->config.credentials);
       sink->config.credentials = gst_aws_credentials_copy (g_value_get_boxed (value));
       break;
+    case PROP_AWS_SDK_ENDPOINT:
+      gst_s3_sink_set_string_property (sink, g_value_get_string (value),
+          &sink->config.aws_sdk_endpoint, "aws-sdk-endpoint");
+      break;
+    case PROP_AWS_SDK_USE_HTTP:
+      sink->config.aws_sdk_use_http = g_value_get_boolean (value);
+      break;
+    case PROP_AWS_SDK_VERIFY_SSL:
+      sink->config.aws_sdk_verify_ssl = g_value_get_boolean (value);
+      break;
+    case PROP_AWS_SDK_S3_SIGN_PAYLOAD:
+      sink->config.aws_sdk_s3_sign_payload = g_value_get_boolean (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -297,6 +337,18 @@ gst_s3_sink_get_property (GObject * object, guint prop_id, GValue * value,
       break;
     case PROP_INIT_AWS_SDK:
       g_value_set_boolean (value, sink->config.init_aws_sdk);
+      break;
+    case PROP_AWS_SDK_ENDPOINT:
+      g_value_set_string (value, sink->config.aws_sdk_endpoint);
+      break;
+    case PROP_AWS_SDK_USE_HTTP:
+      g_value_set_boolean (value, sink->config.aws_sdk_use_http);
+      break;
+    case PROP_AWS_SDK_VERIFY_SSL:
+      g_value_set_boolean (value, sink->config.aws_sdk_verify_ssl);
+      break;
+    case PROP_AWS_SDK_S3_SIGN_PAYLOAD:
+      g_value_set_boolean (value, sink->config.aws_sdk_s3_sign_payload);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
