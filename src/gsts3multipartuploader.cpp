@@ -424,7 +424,20 @@ bool MultipartUploader::_init_uploader(const GstS3UploaderConfig * config)
         return false;
     }
 
-    _s3_client = std::unique_ptr<Aws::S3::S3Client>(new Aws::S3::S3Client(std::move(credentials_provider), client_config));
+    // Configure AWS SDK specific client configuration
+    if (!is_null_or_empty(config->aws_sdk_endpoint))
+    {
+        client_config.endpointOverride = Aws::String(config->aws_sdk_endpoint);
+    }
+    if (config->aws_sdk_use_http)
+    {
+        client_config.scheme = Aws::Http::Scheme::HTTP;
+    }
+    client_config.verifySSL = config->aws_sdk_verify_ssl;
+
+    _s3_client = config->aws_sdk_s3_sign_payload ?
+        std::unique_ptr<Aws::S3::S3Client>(new Aws::S3::S3Client(std::move(credentials_provider), client_config)) :
+        std::unique_ptr<Aws::S3::S3Client>(new Aws::S3::S3Client(std::move(credentials_provider), client_config, Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never, false));
 
     _init_buffer_manager(config->buffer_count, config->buffer_size);
 
