@@ -13,10 +13,9 @@ addons:
       - cmake
       - python3-pip
       - python3-setuptools
-      - ninja-build
 
 install:
-  - pip3 install meson
+  - pip3 install meson ninja
 
 before_script:
   - git clone --depth 1 https://github.com/aws/aws-sdk-cpp.git -b 1.7.202
