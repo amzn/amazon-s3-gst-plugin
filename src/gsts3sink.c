@@ -114,7 +114,7 @@ gst_s3_sink_class_init (GstS3SinkClass * klass)
           "The key of the file to write", NULL,
           G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
-  g_object_class_install_property (gobject_class, PROP_KEY,
+  g_object_class_install_property (gobject_class, PROP_ACL,
       g_param_spec_string ("acl", "S3 object acl",
           "The canned acl for s3 object to upload", NULL,
           G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
