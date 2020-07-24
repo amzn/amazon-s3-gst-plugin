@@ -57,6 +57,7 @@ enum
   PROP_0,
   PROP_BUCKET,
   PROP_KEY,
+  PROP_ACL,
   PROP_CONTENT_TYPE,
   PROP_CA_FILE,
   PROP_REGION,
@@ -113,6 +114,11 @@ gst_s3_sink_class_init (GstS3SinkClass * klass)
           "The key of the file to write", NULL,
           G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property (gobject_class, PROP_KEY,
+      g_param_spec_string ("acl", "S3 object acl",
+          "The canned acl for s3 object to upload", NULL,
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+
   g_object_class_install_property (gobject_class, PROP_CONTENT_TYPE,
       g_param_spec_string ("content-type", "Content type",
           "The content type of a stream", NULL,
@@ -123,7 +129,7 @@ gst_s3_sink_class_init (GstS3SinkClass * klass)
           "A path to a CA file", NULL,
           G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
-g_object_class_install_property (gobject_class, PROP_REGION,
+  g_object_class_install_property (gobject_class, PROP_REGION,
       g_param_spec_string ("region", "AWS Region",
           "An AWS region (e.g. eu-west-2). Leave empty for region-autodetection "
           "(Please note region-autodetection requires an extra network call)", NULL,
@@ -208,6 +214,7 @@ gst_s3_sink_release_config (GstS3UploaderConfig * config)
   g_free (config->region);
   g_free (config->bucket);
   g_free (config->key);
+  g_free (config->acl);
   g_free (config->content_type);
   g_free (config->ca_file);
   g_free (config->aws_sdk_endpoint);
@@ -262,6 +269,10 @@ gst_s3_sink_set_property (GObject * object, guint prop_id,
     case PROP_KEY:
       gst_s3_sink_set_string_property (sink, g_value_get_string (value),
           &sink->config.key, "key");
+      break;
+    case PROP_ACL:
+      gst_s3_sink_set_string_property (sink, g_value_get_string (value),
+          &sink->config.acl, "acl");
       break;
     case PROP_CONTENT_TYPE:
       gst_s3_sink_set_string_property (sink, g_value_get_string (value),
@@ -323,6 +334,9 @@ gst_s3_sink_get_property (GObject * object, guint prop_id, GValue * value,
       break;
     case PROP_KEY:
       g_value_set_string (value, sink->config.key);
+      break;
+    case PROP_ACL:
+      g_value_set_string (value, sink->config.acl);
       break;
     case PROP_CONTENT_TYPE:
       g_value_set_string (value, sink->config.content_type);

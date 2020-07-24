@@ -325,6 +325,7 @@ private:
 
     Aws::String _bucket;
     Aws::String _key;
+    Aws::String _acl = Aws::String("NOT_SET");
 
     Aws::S3::Model::CreateMultipartUploadOutcome _upload_outcome;
 
@@ -354,6 +355,7 @@ private:
 MultipartUploader::MultipartUploader(const GstS3UploaderConfig *config) :
     _bucket(config->bucket),
     _key(config->key),
+    _acl(config->acl),
     _part_states(std::make_shared<PartStateCollection>(false)),
     _init_sdk(config->init_aws_sdk)
 {
@@ -442,8 +444,10 @@ bool MultipartUploader::_init_uploader(const GstS3UploaderConfig * config)
     _init_buffer_manager(config->buffer_count, config->buffer_size);
 
     Aws::S3::Model::CreateMultipartUploadRequest upload_request;
+    Aws::S3::Model::ObjectCannedACL acl = Aws::S3::Model::ObjectCannedACLMapper::GetObjectCannedACLForName(_acl);
     upload_request.SetBucket(_bucket);
     upload_request.SetKey(_key);
+    upload_request.SetACL(std::move(acl));
 
     if (is_null_or_empty(config->content_type))
     {
