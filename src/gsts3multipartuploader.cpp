@@ -444,7 +444,7 @@ bool MultipartUploader::_init_uploader(const GstS3UploaderConfig * config)
     _init_buffer_manager(config->buffer_count, config->buffer_size);
 
     Aws::S3::Model::CreateMultipartUploadRequest upload_request;
-    Aws::S3::Model::ObjectCannedACL acl = Aws::S3::Model::ObjectCannedACLMapper::GetObjectCannedACLForName(_acl);
+    Aws::S3::Model::ObjectCannedACL acl = Aws::S3::Model::ObjectCannedACLMapper::GetObjectCannedACLForName(Aws::String(_acl));
     upload_request.SetBucket(_bucket);
     upload_request.SetKey(_key);
     upload_request.SetACL(std::move(acl));
