@@ -448,7 +448,7 @@ bool MultipartUploader::_init_uploader(const GstS3UploaderConfig * config)
     
     if (!is_null_or_empty(config->acl))
     {
-        _acl = Aws::S3::Model::ObjectCannedACLMapper::GetObjectCannedACLForName(config->acl);
+        _acl = Aws::S3::Model::ObjectCannedACLMapper::GetObjectCannedACLForName(Aws::String(config->acl));
         upload_request.SetACL(_acl);
     }
 
