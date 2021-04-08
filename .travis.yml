@@ -5,6 +5,13 @@ language:
   - c
   - cpp
 
+env:
+  global:
+    - PATH=/opt/python/3.7.1/bin:$PATH
+
+script:
+  - python3 -vv
+
 addons:
   apt:
     packages:
