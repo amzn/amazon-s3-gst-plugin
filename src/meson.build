@@ -38,7 +38,7 @@ gst_s3_elements = library('gsts3elements',
 
 s3elements_dep = declare_dependency(link_with : gst_s3_elements,
   include_directories : [include_directories('.')],
-  dependencies : [gst_dep, gst_base_dep]
+  dependencies : [gst_dep, gst_base_dep, aws_cpp_sdk_s3_dep, aws_cpp_sdk_sts_dep]
 )
 
 install_headers(gst_s3_public_headers, subdir : 'gstreamer-1.0/gst/aws')
