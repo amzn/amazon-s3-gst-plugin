@@ -19,6 +19,10 @@ gst_check_dep = dependency('gstreamer-check-1.0', version : gst_req,
   fallback : ['gstreamer', 'gst_check_dep'])
 aws_cpp_sdk_s3_dep = dependency('aws-cpp-sdk-s3', version : aws_cpp_sdk_req)
 aws_cpp_sdk_sts_dep = dependency('aws-cpp-sdk-sts', version : aws_cpp_sdk_req)
+cpp = meson.get_compiler('cpp')
+aws_c_common_dep = cpp.find_library('aws-c-common', required: true)
+aws_crt_cpp_dep=cpp.find_library('aws-crt-cpp', required:true)
+
 
 configinc = include_directories('.')
 

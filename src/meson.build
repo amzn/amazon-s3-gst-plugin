@@ -11,7 +11,7 @@ gst_s3_public_headers = [
 
 credentials = library('gstawscredentials-@0@'.format(apiversion),
   ['gstawscredentials.cpp'],
-  dependencies : [aws_cpp_sdk_sts_dep, gst_dep],
+  dependencies : [aws_cpp_sdk_sts_dep,  gst_dep, aws_c_common_dep, aws_crt_cpp_dep],
   install : true
 )
 
@@ -30,7 +30,7 @@ multipart_uploader_dep = declare_dependency(link_with : multipart_uploader,
 
 gst_s3_elements = library('gsts3elements',
   gst_s3_elements_sources,
-  dependencies : [gst_dep, gst_base_dep, multipart_uploader_dep, credentials_dep],
+  dependencies : [gst_dep, gst_base_dep, multipart_uploader_dep, credentials_dep, aws_c_common_dep, aws_crt_cpp_dep],
   include_directories : [configinc],
   install : true,
   install_dir : plugins_install_dir,
