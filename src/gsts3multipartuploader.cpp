@@ -110,6 +110,37 @@ private:
     }
 };
 
+class AwsApiHandle
+{
+    public:
+        static std::shared_ptr<AwsApiHandle> GetHandle() {
+            static std::weak_ptr<AwsApiHandle> instance;
+            if (auto ptr = instance.lock()) {
+                return ptr;
+            }
+
+            std::shared_ptr<AwsApiHandle> ptr(new AwsApiHandle());
+            instance = ptr;
+            return ptr;
+        }
+
+        virtual ~AwsApiHandle() {
+            Aws::ShutdownAPI(Aws::SDKOptions {});
+            Aws::Utils::Logging::ShutdownAWSLogging();
+        }
+
+    protected:
+        AwsApiHandle() {
+            Aws::Utils::Logging::InitializeAWSLogging(std::make_shared<Logger>());
+            Aws::SDKOptions options;
+            Aws::InitAPI(options);
+        }
+
+    private:
+        AwsApiHandle(const AwsApiHandle&) = delete;
+        AwsApiHandle& operator=(const AwsApiHandle&) = delete;
+};
+
 static bool get_bucket_location(const char* bucket_name, const Aws::Client::ClientConfiguration& client_config, Aws::String& location)
 {
     Aws::S3::S3Client client(client_config, Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never, false);
@@ -329,6 +360,7 @@ private:
 
     Aws::S3::Model::CreateMultipartUploadOutcome _upload_outcome;
 
+    std::shared_ptr<AwsApiHandle> _api_handle;
     std::unique_ptr<Aws::S3::S3Client> _s3_client;
 
     std::condition_variable _upload_completed_cv;
@@ -339,7 +371,6 @@ private:
 
     int _part_counter = 0;
     bool _verify_hash = false;
-    bool _init_sdk = false;
 };
 
 // TODO: There's a few things I didn't implement because they're not critical (yet), but might
@@ -355,19 +386,13 @@ private:
 MultipartUploader::MultipartUploader(const GstS3UploaderConfig *config) :
     _bucket(config->bucket),
     _key(config->key),
-    _part_states(std::make_shared<PartStateCollection>(false)),
-    _init_sdk(config->init_aws_sdk)
+    _api_handle(config->init_aws_sdk ? AwsApiHandle::GetHandle() : nullptr),
+    _part_states(std::make_shared<PartStateCollection>(false))
 {
 }
 
 MultipartUploader::~MultipartUploader()
 {
-    if (_init_sdk)
-    {
-        Aws::ShutdownAPI(Aws::SDKOptions {});
-        Aws::Utils::Logging::ShutdownAWSLogging();
-    }
-
     if (_buffer_manager)
     {
         for (auto buffer : _buffer_manager->ShutdownAndWait(_buffer_count))
@@ -390,13 +415,6 @@ void MultipartUploader::_init_buffer_manager(size_t buffer_count, size_t buffer_
 
 bool MultipartUploader::_init_uploader(const GstS3UploaderConfig * config)
 {
-    if (_init_sdk)
-    {
-        Aws::Utils::Logging::InitializeAWSLogging(std::make_shared<Logger>());
-        Aws::SDKOptions options;
-        Aws::InitAPI(options);
-    }
-
     Aws::Client::ClientConfiguration client_config;
     if (!is_null_or_empty(config->ca_file))
     {
@@ -445,7 +463,7 @@ bool MultipartUploader::_init_uploader(const GstS3UploaderConfig * config)
     Aws::S3::Model::CreateMultipartUploadRequest upload_request;
     upload_request.SetBucket(_bucket);
     upload_request.SetKey(_key);
-    
+
     if (!is_null_or_empty(config->acl))
     {
         _acl = Aws::S3::Model::ObjectCannedACLMapper::GetObjectCannedACLForName(Aws::String(config->acl));
