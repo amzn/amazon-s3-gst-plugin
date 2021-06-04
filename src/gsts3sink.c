@@ -57,6 +57,7 @@ enum
   PROP_0,
   PROP_BUCKET,
   PROP_KEY,
+  PROP_LOCATION,
   PROP_ACL,
   PROP_CONTENT_TYPE,
   PROP_CA_FILE,
@@ -112,6 +113,11 @@ gst_s3_sink_class_init (GstS3SinkClass * klass)
   g_object_class_install_property (gobject_class, PROP_KEY,
       g_param_spec_string ("key", "S3 key",
           "The key of the file to write", NULL,
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_LOCATION,
+      g_param_spec_string ("location", "S3 URI",
+          "The URI of the file to write", NULL,
           G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_ACL,
@@ -270,6 +276,27 @@ gst_s3_sink_set_property (GObject * object, guint prop_id,
       gst_s3_sink_set_string_property (sink, g_value_get_string (value),
           &sink->config.key, "key");
       break;
+    case PROP_LOCATION:
+    {
+      GstUri *uri = gst_uri_from_string ( g_value_get_string (value) );
+      gchar *path = gst_uri_get_path (uri);
+      gst_s3_sink_set_string_property (sink,
+        gst_uri_get_host (uri),
+        &sink->config.bucket,
+        "bucket");
+      // Deal with the leading '/' on the path
+      if (g_str_has_prefix(path, "/")) {
+        char *temp = path;
+        path = g_strdup( &path[1] );
+        g_free(temp);
+      }
+      gst_s3_sink_set_string_property (sink,
+        path,
+        &sink->config.key,
+        "key");
+      gst_uri_unref(uri);
+      break;
+    }
     case PROP_ACL:
       gst_s3_sink_set_string_property (sink, g_value_get_string (value),
           &sink->config.acl, "acl");
@@ -335,6 +362,25 @@ gst_s3_sink_get_property (GObject * object, guint prop_id, GValue * value,
     case PROP_KEY:
       g_value_set_string (value, sink->config.key);
       break;
+    case PROP_LOCATION:
+    {
+      GstUri *uri = NULL;
+      gchar *uri_str = NULL;
+      gchar *key = NULL;
+      if (! g_str_has_prefix (sink->config.key, "/")) {
+        key = g_strdup_printf ("/%s", sink->config.key);
+      }
+      else {
+        key = g_strdup ( sink->config.key );
+      }
+      uri = gst_uri_new ("s3", NULL, sink->config.bucket, GST_URI_NO_PORT, key, NULL, NULL);
+      uri_str = gst_uri_to_string (uri);
+      g_value_set_string (value, uri_str);
+      g_free (key);
+      g_free (uri_str);
+      gst_uri_unref (uri);
+      break;
+    }
     case PROP_ACL:
       g_value_set_string (value, sink->config.acl);
       break;
