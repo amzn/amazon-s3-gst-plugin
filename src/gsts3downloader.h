@@ -1,5 +1,5 @@
 /* amazon-s3-gst-plugin
- * Copyright (C) 2019 Amazon <mkolny@amazon.com>
+ * Copyright (C) 2021 Laerdal Labs, DC
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -16,30 +16,29 @@
  * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
+#ifndef __GST_S3_DOWNLOADER_H__
+#define __GST_S3_DOWNLOADER_H__
 
-#include "config.h"
+#include <glib.h>
 
-#include <gst/gst.h>
+#include "gsts3uploaderconfig.h"
 
-#include "gsts3sink.h"
+G_BEGIN_DECLS
 
-GST_DEBUG_CATEGORY(gst_aws_s3_debug);
+typedef struct _GstS3Downloader GstS3Downloader;
 
-static gboolean
-plugin_init (GstPlugin * plugin)
-{
-  if (!gst_element_register (plugin, "s3sink", GST_RANK_NONE,
-          gst_s3_sink_get_type ()))
-    return FALSE;
+GstS3Downloader *gst_s3_downloader_new (const GstS3UploaderConfig * config);
 
-  GST_DEBUG_CATEGORY_INIT(gst_aws_s3_debug, "aws-s3", 0, "AWS S3");
+void gst_s3_downloader_free (GstS3Downloader * downloader);
 
-  return TRUE;
-}
+gsize gst_s3_downloader_download_part (GstS3Downloader *
+    downloader, gchar * buffer, gsize first, gsize last);
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
-    GST_VERSION_MINOR,
-    s3elements,
-    "Amazon S3 elements",
-    plugin_init,
-    VERSION, "LGPL", "GStreamer S3 package", "https://www.amazon.com")
+GType gst_s3_downloader_get_type (void);
+
+#define GST_TYPE_AWS_S3_DOWNLOADER \
+  (gst_aws_downloader_get_type())
+
+G_END_DECLS
+
+#endif /* __GST_S3_DOWNLOADER_H__ */

@@ -1,5 +1,5 @@
 /* amazon-s3-gst-plugin
- * Copyright (C) 2019 Amazon <mkolny@amazon.com>
+ * Copyright (C) 2021 Laerdal Labs, DC
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -16,30 +16,29 @@
  * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
+#ifndef __AWS_API__
+#define __AWS_API__
 
-#include "config.h"
+#include <memory>
 
-#include <gst/gst.h>
+namespace gst {
+namespace aws {
 
-#include "gsts3sink.h"
-
-GST_DEBUG_CATEGORY(gst_aws_s3_debug);
-
-static gboolean
-plugin_init (GstPlugin * plugin)
+class AwsApiHandle
 {
-  if (!gst_element_register (plugin, "s3sink", GST_RANK_NONE,
-          gst_s3_sink_get_type ()))
-    return FALSE;
+    public:
+        static std::shared_ptr<AwsApiHandle> GetHandle();
+        virtual ~AwsApiHandle();
 
-  GST_DEBUG_CATEGORY_INIT(gst_aws_s3_debug, "aws-s3", 0, "AWS S3");
+    protected:
+        AwsApiHandle();
 
-  return TRUE;
-}
+    private:
+        AwsApiHandle(const AwsApiHandle&) = delete;
+        AwsApiHandle& operator=(const AwsApiHandle&) = delete;
+};
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
-    GST_VERSION_MINOR,
-    s3elements,
-    "Amazon S3 elements",
-    plugin_init,
-    VERSION, "LGPL", "GStreamer S3 package", "https://www.amazon.com")
+} // namespace aws
+} // namespace gst
+
+#endif /* __AWS_API__ */

@@ -30,6 +30,7 @@ typedef struct _GstS3Uploader GstS3Uploader;
 typedef struct {
   void (*destroy) (GstS3Uploader *);
   gboolean (*upload_part) (GstS3Uploader *, const gchar *, gsize);
+  gboolean (*upload_part_copy) (GstS3Uploader *, const gchar *, const gchar *, gsize, gsize);
   gboolean (*complete) (GstS3Uploader *);
 } GstS3UploaderClass;
 
@@ -43,6 +44,9 @@ void gst_s3_uploader_destroy (GstS3Uploader * uploader);
 
 gboolean gst_s3_uploader_upload_part (GstS3Uploader *
     uploader, const gchar * buffer, gsize size);
+
+gboolean gst_s3_uploader_upload_part_copy (GstS3Uploader *
+    uploader, const gchar * bucket, const gchar * key, gsize first, gsize last);
 
 gboolean gst_s3_uploader_complete (GstS3Uploader * uploader);
 

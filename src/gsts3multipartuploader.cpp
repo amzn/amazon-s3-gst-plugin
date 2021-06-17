@@ -20,13 +20,12 @@
 #include "gsts3multipartuploader.h"
 
 #include "gstawscredentials.hpp"
+#include "gstawsapihandle.hpp"
 
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentials.h>
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
 #include <aws/core/utils/HashingUtils.h>
-#include <aws/core/utils/logging/AWSLogging.h>
-#include <aws/core/utils/logging/LogSystemInterface.h>
 #include <aws/core/utils/ResourceManager.h>
 #include <aws/core/utils/stream/PreallocatedStreamBuf.h>
 #include <aws/s3/model/CompleteMultipartUploadRequest.h>
@@ -34,6 +33,7 @@
 #include <aws/s3/model/GetBucketLocationRequest.h>
 #include <aws/s3/model/GetBucketLocationResult.h>
 #include <aws/s3/model/UploadPartRequest.h>
+#include <aws/s3/model/UploadPartCopyRequest.h>
 #include <aws/s3/S3Client.h>
 #include <aws/sts/model/AssumeRoleRequest.h>
 #include <aws/sts/STSClient.h>
@@ -46,98 +46,6 @@ namespace aws
 {
 namespace s3
 {
-class Logger : public Aws::Utils::Logging::LogSystemInterface
-{
-public:
-    Aws::Utils::Logging::LogLevel GetLogLevel(void) const override
-    {
-        return _to_aws_log_level(gst_debug_category_get_threshold(gst_s3_sink_debug));
-    }
-
-    void Log(Aws::Utils::Logging::LogLevel log_level, const char* tag, const char* format, ...) override
-    {
-        GstDebugLevel level = _to_gst_log_level(log_level);
-        va_list varargs;
-        va_start (varargs, format);
-
-        if (G_UNLIKELY ((level) <= GST_LEVEL_MAX && (level) <= _gst_debug_min))
-        {
-            gst_debug_log_valist(gst_s3_sink_debug, level, "", tag, 0, NULL, format, varargs);
-        }
-        va_end (varargs);
-    }
-
-    void LogStream(Aws::Utils::Logging::LogLevel log_level, const char* tag, const Aws::OStringStream &message_stream) override
-    {
-        Log(log_level, tag, "%s", message_stream.str().c_str());
-    }
-
-    void Flush() override
-    {
-    }
-
-private:
-    static Aws::Utils::Logging::LogLevel _to_aws_log_level(GstDebugLevel level)
-    {
-        using Aws::Utils::Logging::LogLevel;
-        switch (level)
-        {
-            case GST_LEVEL_NONE: return LogLevel::Off;
-            case GST_LEVEL_ERROR: return LogLevel::Error;
-            case GST_LEVEL_WARNING: return LogLevel::Warn;
-            case GST_LEVEL_FIXME:
-            case GST_LEVEL_INFO: return LogLevel::Info;
-            case GST_LEVEL_DEBUG: return LogLevel::Debug;
-            default: return LogLevel::Trace;
-        }
-    }
-
-    static GstDebugLevel _to_gst_log_level(Aws::Utils::Logging::LogLevel level)
-    {
-        using Aws::Utils::Logging::LogLevel;
-        switch (level)
-        {
-            case LogLevel::Off: return GST_LEVEL_NONE;
-            case LogLevel::Fatal:
-            case LogLevel::Error: return GST_LEVEL_ERROR;
-            case LogLevel::Warn: return GST_LEVEL_WARNING;
-            case LogLevel::Info: return GST_LEVEL_INFO;
-            case LogLevel::Debug: return GST_LEVEL_DEBUG;
-            default: return GST_LEVEL_TRACE;
-        }
-    }
-};
-
-class AwsApiHandle
-{
-    public:
-        static std::shared_ptr<AwsApiHandle> GetHandle() {
-            static std::weak_ptr<AwsApiHandle> instance;
-            if (auto ptr = instance.lock()) {
-                return ptr;
-            }
-
-            std::shared_ptr<AwsApiHandle> ptr(new AwsApiHandle());
-            instance = ptr;
-            return ptr;
-        }
-
-        virtual ~AwsApiHandle() {
-            Aws::ShutdownAPI(Aws::SDKOptions {});
-            Aws::Utils::Logging::ShutdownAWSLogging();
-        }
-
-    protected:
-        AwsApiHandle() {
-            Aws::Utils::Logging::InitializeAWSLogging(std::make_shared<Logger>());
-            Aws::SDKOptions options;
-            Aws::InitAPI(options);
-        }
-
-    private:
-        AwsApiHandle(const AwsApiHandle&) = delete;
-        AwsApiHandle& operator=(const AwsApiHandle&) = delete;
-};
 
 static bool get_bucket_location(const char* bucket_name, const Aws::Client::ClientConfiguration& client_config, Aws::String& location)
 {
@@ -223,6 +131,13 @@ public:
         return ss.str() == outcome.GetResult().GetETag();
     }
 
+    bool verify_upload_outcome(const Aws::S3::Model::UploadPartCopyOutcome& outcome) const
+    {
+        Aws::StringStream ss;
+        ss << "\"" << Aws::Utils::HashingUtils::HexEncode(_md5_hash) << "\"";
+        return ss.str() == outcome.GetResult().GetCopyPartResult().GetETag();
+    }
+
 private:
     Aws::Utils::ByteBuffer _md5_hash;
     Aws::String _etag;
@@ -276,7 +191,8 @@ public:
         return _parts_failed.size();
     }
 
-    bool verify_upload_outcome(int part_number, const Aws::S3::Model::UploadPartOutcome& outcome) const
+    template <typename T>
+    bool verify_upload_outcome(int part_number, const Aws::Utils::Outcome<T, Aws::S3::S3Error>& outcome) const
     {
         if (!_verify_hash)
         {
@@ -369,6 +285,7 @@ public:
     ~MultipartUploader();
 
     bool upload(const char* data, size_t size);
+    bool upload_copy(const char* bucket, const char *key, size_t first, size_t last);
     bool complete();
 
 private:
@@ -380,6 +297,8 @@ private:
     std::unique_ptr<Aws::IOStream> _create_stream(const char* data, size_t size);
 
     static void _handle_upload_completed(const Aws::S3::S3Client*, const Aws::S3::Model::UploadPartRequest&, const Aws::S3::Model::UploadPartOutcome& outcome, const std::shared_ptr<const Aws::Client::AsyncCallerContext>& ctx);
+
+    static void _handle_upload_copy_completed(const Aws::S3::S3Client*, const Aws::S3::Model::UploadPartCopyRequest&, const Aws::S3::Model::UploadPartCopyOutcome& outcome, const std::shared_ptr<const Aws::Client::AsyncCallerContext>& ctx);
 
     Aws::String _bucket;
     Aws::String _key;
@@ -550,6 +469,34 @@ bool MultipartUploader::upload(const char* data, size_t size)
     return true;
 }
 
+bool MultipartUploader::upload_copy(const char* bucket, const char *key, size_t first, size_t last)
+{
+    int part_number = ++_part_counter;
+    gchar *copy_source = g_strdup_printf("%s/%s", bucket, key);
+    gchar *copy_source_range = g_strdup_printf("bytes=%ld-%ld", first, last);
+
+    Aws::S3::Model::UploadPartCopyRequest request;
+    request.WithBucket(_bucket)
+        .WithKey(_key)
+        .WithPartNumber(part_number)
+        .WithUploadId(_upload_outcome.GetResult().GetUploadId())
+        .WithCopySource(copy_source)
+        .WithCopySourceRange(copy_source_range);
+
+    g_free(copy_source);
+    g_free(copy_source_range);
+
+    PartState part_state(part_number);
+
+    _part_states->start(std::move(part_state));
+
+    auto context = std::make_shared<MultipartUploaderContext>(_part_states, _buffer_manager, part_number);
+
+    _s3_client->UploadPartCopyAsync(request, _handle_upload_copy_completed, context);
+
+    return true;
+}
+
 bool MultipartUploader::complete()
 {
     _part_states->wait_for_complete();
@@ -600,6 +547,26 @@ void MultipartUploader::_handle_upload_completed(const Aws::S3::S3Client*,
     }
 }
 
+void MultipartUploader::_handle_upload_copy_completed(const Aws::S3::S3Client*,
+    G_GNUC_UNUSED const Aws::S3::Model::UploadPartCopyRequest& request,
+    const Aws::S3::Model::UploadPartCopyOutcome& outcome,
+    const std::shared_ptr<const Aws::Client::AsyncCallerContext>& ctx)
+{
+    auto context = std::static_pointer_cast<const MultipartUploaderContext>(ctx);
+
+    auto states = context->get_part_states();
+    int part_number = context->get_part_number();
+
+    if (outcome.IsSuccess() && states->verify_upload_outcome(part_number, outcome))
+    {
+        states->mark_part_as_completed(part_number, outcome.GetResult().GetCopyPartResult().GetETag());
+    }
+    else
+    {
+        states->mark_part_as_failed(part_number);
+    }
+}
+
 } // namespace s3
 } // namespace aws
 } // namespace gst
@@ -633,6 +600,16 @@ gst_s3_multipart_uploader_upload_part (GstS3Uploader *
 }
 
 static gboolean
+gst_s3_multipart_uploader_upload_part_copy (GstS3Uploader *
+    uploader, const gchar * bucket, const gchar * key, gsize first,
+    gsize last)
+{
+  GstS3MultipartUploader *self = MULTIPART_UPLOADER_ (uploader);
+  g_return_val_if_fail (self && self->impl, FALSE);
+  return self->impl->upload_copy (bucket, key, first, last);
+}
+
+static gboolean
 gst_s3_multipart_uploader_complete (GstS3Uploader * uploader)
 {
   GstS3MultipartUploader *self = MULTIPART_UPLOADER_ (uploader);
@@ -642,6 +619,7 @@ gst_s3_multipart_uploader_complete (GstS3Uploader * uploader)
 static GstS3UploaderClass default_class = {
   gst_s3_multipart_uploader_destroy,
   gst_s3_multipart_uploader_upload_part,
+  gst_s3_multipart_uploader_upload_part_copy,
   gst_s3_multipart_uploader_complete
 };
 

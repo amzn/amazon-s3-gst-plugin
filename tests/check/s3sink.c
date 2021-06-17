@@ -58,6 +58,21 @@ test_uploader_upload_part (GstS3Uploader * uploader, G_GNUC_UNUSED const gchar *
 }
 
 static gboolean
+test_uploader_upload_part_copy (GstS3Uploader * uploader, G_GNUC_UNUSED const gchar * bucket,
+  G_GNUC_UNUSED const gchar * key, G_GNUC_UNUSED gsize first, G_GNUC_UNUSED gsize last)
+{
+  gboolean ok = TEST_UPLOADER(uploader)->fail_upload_retry != 0;
+
+  TEST_UPLOADER(uploader)->upload_part_count++;
+
+  if (ok) {
+    TEST_UPLOADER(uploader)->fail_upload_retry--;
+  }
+
+  return ok;
+}
+
+static gboolean
 test_uploader_complete (GstS3Uploader * uploader)
 {
   return !TEST_UPLOADER(uploader)->fail_complete;
@@ -66,6 +81,7 @@ test_uploader_complete (GstS3Uploader * uploader)
 static GstS3UploaderClass test_uploader_class = {
   test_uploader_destroy,
   test_uploader_upload_part,
+  test_uploader_upload_part_copy,
   test_uploader_complete
 };
 

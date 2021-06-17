@@ -23,6 +23,7 @@
 #include <gst/base/gstbasesink.h>
 
 #include "gsts3uploader.h"
+#include "gsts3downloader.h"
 #include "gstawscredentials.h"
 
 G_BEGIN_DECLS
@@ -53,10 +54,18 @@ struct _GstS3Sink {
   GstS3UploaderConfig config;
 
   GstS3Uploader *uploader;
+  GstS3Downloader *downloader;
+
+  // Current position within the upload
+  gsize current_pos;
+  // Total accumulated data in the upload
+  gsize upload_size;
 
   gchar *buffer;
-  gsize current_buffer_size;
-  gsize total_bytes_written;
+  // Current position within buffer
+  gsize buffer_pos;
+  // Total accumulated size of data in the buffer
+  gsize buffer_size;
 
   gboolean is_started;
 };
