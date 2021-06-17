@@ -186,6 +186,14 @@ GST_START_TEST (test_location_property)
 }
 GST_END_TEST
 
+GST_START_TEST (test_gst_urihandler_interface)
+{
+  GstElement *s3Sink = gst_element_make_from_uri(GST_URI_SINK, "s3://bucket/key", "s3sink", NULL);
+  fail_if(NULL == s3Sink);
+  gst_object_unref(s3Sink);
+}
+GST_END_TEST
+
 GST_START_TEST (test_change_properties_after_start_should_fail)
 {
   GstElement *sink = gst_element_factory_make("s3sink", "sink");
@@ -428,6 +436,7 @@ s3sink_suite (void)
   suite_add_tcase (s, tc_chain);
   tcase_add_test (tc_chain, test_no_bucket_and_key_then_start_should_fail);
   tcase_add_test (tc_chain, test_location_property);
+  tcase_add_test (tc_chain, test_gst_urihandler_interface);
   tcase_add_test (tc_chain, test_change_properties_after_start_should_fail);
   tcase_add_test (tc_chain, test_send_eos_should_flush_buffer);
   tcase_add_test (tc_chain, test_push_buffer_should_flush_buffer_if_reaches_limit);

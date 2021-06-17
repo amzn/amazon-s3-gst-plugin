@@ -36,6 +36,7 @@
 #include <string.h>
 
 #include <gst/gst.h>
+#include <gst/gsturi.h>
 
 #include "gsts3sink.h"
 #include "gsts3multipartuploader.h"
@@ -51,6 +52,8 @@ GST_DEBUG_CATEGORY (gst_s3_sink_debug);
 #define MIN_BUFFER_SIZE 5 * 1024 * 1024
 #define DEFAULT_BUFFER_SIZE GST_S3_UPLOADER_CONFIG_DEFAULT_BUFFER_SIZE
 #define DEFAULT_BUFFER_COUNT GST_S3_UPLOADER_CONFIG_DEFAULT_BUFFER_COUNT
+
+#define REQUIRED_BUT_UNUSED(x) (void)(x)
 
 enum
 {
@@ -89,10 +92,54 @@ static gboolean gst_s3_sink_query (GstBaseSink * bsink, GstQuery * query);
 static gboolean gst_s3_sink_fill_buffer (GstS3Sink * sink, GstBuffer * buffer);
 static gboolean gst_s3_sink_flush_buffer (GstS3Sink * sink);
 
-#define _do_init \
-  GST_DEBUG_CATEGORY_INIT (gst_s3_sink_debug, "s3sink", 0, "s3sink element");
+/**
+ * GstURIHandler Interface implementation
+ */
+static GstURIType
+gst_s3_sink_urihandler_get_type (GType type)
+{
+  REQUIRED_BUT_UNUSED(type);
+  return GST_URI_SINK;
+}
+
+static const gchar * const*
+gst_s3_sink_urihandler_get_protocols (GType type)
+{
+  REQUIRED_BUT_UNUSED(type);
+  static const gchar *protocols[] = { "s3", NULL};
+  return protocols;
+}
+
+static gchar *
+gst_s3_sink_urihandler_get_uri (GstURIHandler * handler)
+{
+  GValue value = {0};
+  g_object_get_property( G_OBJECT(handler), "location", &value);
+  return g_strdup_value_contents(&value);
+}
+
+static gboolean
+gst_s3_sink_urihandler_set_uri (GstURIHandler * handler, const gchar * uri, GError **error)
+{
+  REQUIRED_BUT_UNUSED(error);
+  g_object_set( G_OBJECT(handler), "location", uri, NULL);
+  return TRUE;
+}
+
+static void
+gst_s3_sink_urihandler_init (gpointer g_iface, gpointer iface_data)
+{
+  REQUIRED_BUT_UNUSED(iface_data);
+  GstURIHandlerInterface *iface = (GstURIHandlerInterface *) g_iface;
+  iface->get_type      = gst_s3_sink_urihandler_get_type;
+  iface->get_protocols = gst_s3_sink_urihandler_get_protocols;
+  iface->get_uri       = gst_s3_sink_urihandler_get_uri;
+  iface->set_uri       = gst_s3_sink_urihandler_set_uri;
+}
+
 #define gst_s3_sink_parent_class parent_class
-G_DEFINE_TYPE_WITH_CODE (GstS3Sink, gst_s3_sink, GST_TYPE_BASE_SINK, _do_init)
+G_DEFINE_TYPE_WITH_CODE (GstS3Sink, gst_s3_sink, GST_TYPE_BASE_SINK,
+  G_IMPLEMENT_INTERFACE (GST_TYPE_URI_HANDLER, gst_s3_sink_urihandler_init));
 
 static void
 gst_s3_sink_class_init (GstS3SinkClass * klass)
@@ -100,6 +147,8 @@ gst_s3_sink_class_init (GstS3SinkClass * klass)
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
   GstBaseSinkClass *gstbasesink_class = GST_BASE_SINK_CLASS (klass);
+
+  GST_DEBUG_CATEGORY_INIT (gst_s3_sink_debug, "s3sink", 0, "s3sink element");
 
   gobject_class->dispose = gst_s3_sink_dispose;
   gobject_class->set_property = gst_s3_sink_set_property;
