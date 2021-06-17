@@ -147,6 +147,53 @@ GST_START_TEST (test_no_bucket_and_key_then_start_should_fail)
 }
 GST_END_TEST
 
+GST_START_TEST (test_location_property)
+{
+  GstElement *sink = gst_element_factory_make ("s3sink", "sink");
+  const gchar *bucket = "bucket";
+  const gchar *key = "key";
+  const gchar *location = "s3://bucket/key";
+
+  gchar *returned_bucket = NULL,
+    *returned_key = NULL,
+    *returned_location = NULL;
+
+  fail_if (sink == NULL);
+
+  // Verify setting bucket and key results in location == 's3://{bucket}/{key}'
+  g_object_set (sink,
+    "bucket", bucket,
+    "key", key,
+    NULL);
+  g_object_get (sink, "location", &returned_location, NULL);
+  fail_if (0 != g_ascii_strcasecmp(location, returned_location));
+  g_free (returned_location);
+  returned_location = NULL;
+
+  // Set the bucket and key to something different, then set location.
+  // Verify bucket and key match what is expected.
+  g_object_set (sink, "bucket", "", "key", "", NULL);
+  g_object_set (sink, "location", location, NULL);
+  g_object_get (sink, "bucket", &returned_bucket, "key", &returned_key, NULL);
+  fail_if (0 != g_ascii_strcasecmp(bucket, returned_bucket));
+  fail_if (0 != g_ascii_strcasecmp(key, returned_key));
+  g_free (returned_bucket);
+  returned_bucket = NULL;
+  g_free (returned_key);
+  returned_key = NULL;
+
+  gst_object_unref (sink);
+}
+GST_END_TEST
+
+GST_START_TEST (test_gst_urihandler_interface)
+{
+  GstElement *s3Sink = gst_element_make_from_uri(GST_URI_SINK, "s3://bucket/key", "s3sink", NULL);
+  fail_if(NULL == s3Sink);
+  gst_object_unref(s3Sink);
+}
+GST_END_TEST
+
 GST_START_TEST (test_change_properties_after_start_should_fail)
 {
   GstElement *sink = gst_element_factory_make("s3sink", "sink");
@@ -388,6 +435,8 @@ s3sink_suite (void)
 
   suite_add_tcase (s, tc_chain);
   tcase_add_test (tc_chain, test_no_bucket_and_key_then_start_should_fail);
+  tcase_add_test (tc_chain, test_location_property);
+  tcase_add_test (tc_chain, test_gst_urihandler_interface);
   tcase_add_test (tc_chain, test_change_properties_after_start_should_fail);
   tcase_add_test (tc_chain, test_send_eos_should_flush_buffer);
   tcase_add_test (tc_chain, test_push_buffer_should_flush_buffer_if_reaches_limit);

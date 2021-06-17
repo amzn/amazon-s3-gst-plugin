@@ -36,6 +36,7 @@
 #include <string.h>
 
 #include <gst/gst.h>
+#include <gst/gsturi.h>
 
 #include "gsts3sink.h"
 #include "gsts3multipartuploader.h"
@@ -52,11 +53,14 @@ GST_DEBUG_CATEGORY (gst_s3_sink_debug);
 #define DEFAULT_BUFFER_SIZE GST_S3_UPLOADER_CONFIG_DEFAULT_BUFFER_SIZE
 #define DEFAULT_BUFFER_COUNT GST_S3_UPLOADER_CONFIG_DEFAULT_BUFFER_COUNT
 
+#define REQUIRED_BUT_UNUSED(x) (void)(x)
+
 enum
 {
   PROP_0,
   PROP_BUCKET,
   PROP_KEY,
+  PROP_LOCATION,
   PROP_ACL,
   PROP_CONTENT_TYPE,
   PROP_CA_FILE,
@@ -88,10 +92,54 @@ static gboolean gst_s3_sink_query (GstBaseSink * bsink, GstQuery * query);
 static gboolean gst_s3_sink_fill_buffer (GstS3Sink * sink, GstBuffer * buffer);
 static gboolean gst_s3_sink_flush_buffer (GstS3Sink * sink);
 
-#define _do_init \
-  GST_DEBUG_CATEGORY_INIT (gst_s3_sink_debug, "s3sink", 0, "s3sink element");
+/**
+ * GstURIHandler Interface implementation
+ */
+static GstURIType
+gst_s3_sink_urihandler_get_type (GType type)
+{
+  REQUIRED_BUT_UNUSED(type);
+  return GST_URI_SINK;
+}
+
+static const gchar * const*
+gst_s3_sink_urihandler_get_protocols (GType type)
+{
+  REQUIRED_BUT_UNUSED(type);
+  static const gchar *protocols[] = { "s3", NULL};
+  return protocols;
+}
+
+static gchar *
+gst_s3_sink_urihandler_get_uri (GstURIHandler * handler)
+{
+  GValue value = {0};
+  g_object_get_property( G_OBJECT(handler), "location", &value);
+  return g_strdup_value_contents(&value);
+}
+
+static gboolean
+gst_s3_sink_urihandler_set_uri (GstURIHandler * handler, const gchar * uri, GError **error)
+{
+  REQUIRED_BUT_UNUSED(error);
+  g_object_set( G_OBJECT(handler), "location", uri, NULL);
+  return TRUE;
+}
+
+static void
+gst_s3_sink_urihandler_init (gpointer g_iface, gpointer iface_data)
+{
+  REQUIRED_BUT_UNUSED(iface_data);
+  GstURIHandlerInterface *iface = (GstURIHandlerInterface *) g_iface;
+  iface->get_type      = gst_s3_sink_urihandler_get_type;
+  iface->get_protocols = gst_s3_sink_urihandler_get_protocols;
+  iface->get_uri       = gst_s3_sink_urihandler_get_uri;
+  iface->set_uri       = gst_s3_sink_urihandler_set_uri;
+}
+
 #define gst_s3_sink_parent_class parent_class
-G_DEFINE_TYPE_WITH_CODE (GstS3Sink, gst_s3_sink, GST_TYPE_BASE_SINK, _do_init)
+G_DEFINE_TYPE_WITH_CODE (GstS3Sink, gst_s3_sink, GST_TYPE_BASE_SINK,
+  G_IMPLEMENT_INTERFACE (GST_TYPE_URI_HANDLER, gst_s3_sink_urihandler_init));
 
 static void
 gst_s3_sink_class_init (GstS3SinkClass * klass)
@@ -99,6 +147,8 @@ gst_s3_sink_class_init (GstS3SinkClass * klass)
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
   GstBaseSinkClass *gstbasesink_class = GST_BASE_SINK_CLASS (klass);
+
+  GST_DEBUG_CATEGORY_INIT (gst_s3_sink_debug, "s3sink", 0, "s3sink element");
 
   gobject_class->dispose = gst_s3_sink_dispose;
   gobject_class->set_property = gst_s3_sink_set_property;
@@ -112,6 +162,11 @@ gst_s3_sink_class_init (GstS3SinkClass * klass)
   g_object_class_install_property (gobject_class, PROP_KEY,
       g_param_spec_string ("key", "S3 key",
           "The key of the file to write", NULL,
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_LOCATION,
+      g_param_spec_string ("location", "S3 URI",
+          "The URI of the file to write", NULL,
           G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_ACL,
@@ -270,6 +325,27 @@ gst_s3_sink_set_property (GObject * object, guint prop_id,
       gst_s3_sink_set_string_property (sink, g_value_get_string (value),
           &sink->config.key, "key");
       break;
+    case PROP_LOCATION:
+    {
+      GstUri *uri = gst_uri_from_string ( g_value_get_string (value) );
+      gchar *path = gst_uri_get_path (uri);
+      gst_s3_sink_set_string_property (sink,
+        gst_uri_get_host (uri),
+        &sink->config.bucket,
+        "bucket");
+      // Deal with the leading '/' on the path
+      if (g_str_has_prefix(path, "/")) {
+        char *temp = path;
+        path = g_strdup( &path[1] );
+        g_free(temp);
+      }
+      gst_s3_sink_set_string_property (sink,
+        path,
+        &sink->config.key,
+        "key");
+      gst_uri_unref(uri);
+      break;
+    }
     case PROP_ACL:
       gst_s3_sink_set_string_property (sink, g_value_get_string (value),
           &sink->config.acl, "acl");
@@ -335,6 +411,25 @@ gst_s3_sink_get_property (GObject * object, guint prop_id, GValue * value,
     case PROP_KEY:
       g_value_set_string (value, sink->config.key);
       break;
+    case PROP_LOCATION:
+    {
+      GstUri *uri = NULL;
+      gchar *uri_str = NULL;
+      gchar *key = NULL;
+      if (! g_str_has_prefix (sink->config.key, "/")) {
+        key = g_strdup_printf ("/%s", sink->config.key);
+      }
+      else {
+        key = g_strdup ( sink->config.key );
+      }
+      uri = gst_uri_new ("s3", NULL, sink->config.bucket, GST_URI_NO_PORT, key, NULL, NULL);
+      uri_str = gst_uri_to_string (uri);
+      g_value_set_string (value, uri_str);
+      g_free (key);
+      g_free (uri_str);
+      gst_uri_unref (uri);
+      break;
+    }
     case PROP_ACL:
       g_value_set_string (value, sink->config.acl);
       break;
