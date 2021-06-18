@@ -19,6 +19,7 @@
 
 #include "gsts3multipartuploader.h"
 
+#include "gstawsutils.hpp"
 #include "gstawscredentials.hpp"
 #include "gstawsapihandle.hpp"
 
@@ -46,25 +47,6 @@ namespace aws
 {
 namespace s3
 {
-
-static bool get_bucket_location(const char* bucket_name, const Aws::Client::ClientConfiguration& client_config, Aws::String& location)
-{
-    Aws::S3::S3Client client(client_config, Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never, false);
-
-    auto outcome = client.GetBucketLocation(Aws::S3::Model::GetBucketLocationRequest().WithBucket(bucket_name));
-    if (!outcome.IsSuccess())
-    {
-        return false;
-    }
-
-    location = Aws::S3::Model::BucketLocationConstraintMapper::GetNameForBucketLocationConstraint(outcome.GetResult().GetLocationConstraint());
-    return true;
-}
-
-static bool is_null_or_empty(const char* str)
-{
-    return str == nullptr || strcmp(str, "") == 0;
-}
 
 static const Aws::String get_bucket_from_config(const GstS3UploaderConfig * config)
 {

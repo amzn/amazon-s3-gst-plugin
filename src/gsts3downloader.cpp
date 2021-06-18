@@ -18,37 +18,14 @@
  */
 #include "gsts3downloader.h"
 
+#include "gstawsutils.hpp"
 #include "gstawsapihandle.hpp"
 #include "gstawscredentials.hpp"
-
-#include <aws/s3/model/GetBucketLocationRequest.h>
-#include <aws/s3/model/GetBucketLocationResult.h>
 #include <aws/s3/model/GetObjectRequest.h>
 #include <aws/s3/model/GetObjectResult.h>
 #include <aws/s3/S3Client.h>
 
 #include <gst/gst.h>
-
-//TODO: move to re-use w/ uploader
-static bool get_bucket_location(const char* bucket_name, const Aws::Client::ClientConfiguration& client_config, Aws::String& location)
-{
-  Aws::S3::S3Client client(client_config, Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never, false);
-
-  auto outcome = client.GetBucketLocation(Aws::S3::Model::GetBucketLocationRequest().WithBucket(bucket_name));
-  if (!outcome.IsSuccess())
-  {
-    return false;
-  }
-
-  location = Aws::S3::Model::BucketLocationConstraintMapper::GetNameForBucketLocationConstraint(outcome.GetResult().GetLocationConstraint());
-  return true;
-}
-
-//TODO: move to re-use w/ uploader
-static bool is_null_or_empty(const char* str)
-{
-  return str == nullptr || strcmp(str, "") == 0;
-}
 
 struct _GstS3Downloader {
   _GstS3Downloader(const GstS3UploaderConfig *config);
