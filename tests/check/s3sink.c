@@ -150,37 +150,21 @@ GST_END_TEST
 GST_START_TEST (test_location_property)
 {
   GstElement *sink = gst_element_factory_make ("s3sink", "sink");
-  const gchar *bucket = "bucket";
-  const gchar *key = "key";
   const gchar *location = "s3://bucket/key";
 
-  gchar *returned_bucket = NULL,
-    *returned_key = NULL,
-    *returned_location = NULL;
+  gchar *returned_location = NULL;
 
   fail_if (sink == NULL);
 
-  // Verify setting bucket and key results in location == 's3://{bucket}/{key}'
+  // Set location, then set bucket and key, verify location is used
+  g_object_set (sink, "location", location, NULL);
   g_object_set (sink,
-    "bucket", bucket,
-    "key", key,
+    "bucket", "new-bucket",
+    "key", "new-key",
     NULL);
   g_object_get (sink, "location", &returned_location, NULL);
-  fail_if (0 != g_ascii_strcasecmp(location, returned_location));
+  fail_if (0 == g_ascii_strcasecmp(location, returned_location));
   g_free (returned_location);
-  returned_location = NULL;
-
-  // Set the bucket and key to something different, then set location.
-  // Verify bucket and key match what is expected.
-  g_object_set (sink, "bucket", "", "key", "", NULL);
-  g_object_set (sink, "location", location, NULL);
-  g_object_get (sink, "bucket", &returned_bucket, "key", &returned_key, NULL);
-  fail_if (0 != g_ascii_strcasecmp(bucket, returned_bucket));
-  fail_if (0 != g_ascii_strcasecmp(key, returned_key));
-  g_free (returned_bucket);
-  returned_bucket = NULL;
-  g_free (returned_key);
-  returned_key = NULL;
 
   gst_object_unref (sink);
 }

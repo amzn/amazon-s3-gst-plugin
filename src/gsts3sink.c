@@ -156,12 +156,12 @@ gst_s3_sink_class_init (GstS3SinkClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_BUCKET,
       g_param_spec_string ("bucket", "S3 bucket",
-          "The bucket of the file to write", NULL,
+          "The bucket of the file to write (ignored when 'location' is set)", NULL,
           G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_KEY,
       g_param_spec_string ("key", "S3 key",
-          "The key of the file to write", NULL,
+          "The key of the file to write (ignored when 'location' is set)", NULL,
           G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_LOCATION,
@@ -269,6 +269,7 @@ gst_s3_sink_release_config (GstS3UploaderConfig * config)
   g_free (config->region);
   g_free (config->bucket);
   g_free (config->key);
+  g_free (config->location);
   g_free (config->acl);
   g_free (config->content_type);
   g_free (config->ca_file);
@@ -326,26 +327,9 @@ gst_s3_sink_set_property (GObject * object, guint prop_id,
           &sink->config.key, "key");
       break;
     case PROP_LOCATION:
-    {
-      GstUri *uri = gst_uri_from_string ( g_value_get_string (value) );
-      gchar *path = gst_uri_get_path (uri);
-      gst_s3_sink_set_string_property (sink,
-        gst_uri_get_host (uri),
-        &sink->config.bucket,
-        "bucket");
-      // Deal with the leading '/' on the path
-      if (g_str_has_prefix(path, "/")) {
-        char *temp = path;
-        path = g_strdup( &path[1] );
-        g_free(temp);
-      }
-      gst_s3_sink_set_string_property (sink,
-        path,
-        &sink->config.key,
-        "key");
-      gst_uri_unref(uri);
+      gst_s3_sink_set_string_property (sink, g_value_get_string (value),
+          &sink->config.key, "location");
       break;
-    }
     case PROP_ACL:
       gst_s3_sink_set_string_property (sink, g_value_get_string (value),
           &sink->config.acl, "acl");
@@ -398,6 +382,12 @@ gst_s3_sink_set_property (GObject * object, guint prop_id,
   }
 }
 
+static gboolean
+gst_s3_sink_is_null_or_empty (const gchar * str)
+{
+  return str == NULL || str[0] == '\0';
+}
+
 static void
 gst_s3_sink_get_property (GObject * object, guint prop_id, GValue * value,
     GParamSpec * pspec)
@@ -413,21 +403,24 @@ gst_s3_sink_get_property (GObject * object, guint prop_id, GValue * value,
       break;
     case PROP_LOCATION:
     {
-      GstUri *uri = NULL;
-      gchar *uri_str = NULL;
-      gchar *key = NULL;
-      if (! g_str_has_prefix (sink->config.key, "/")) {
-        key = g_strdup_printf ("/%s", sink->config.key);
+      if (gst_s3_sink_is_null_or_empty(sink->config.location)) {
+        GstUri *uri = NULL;
+        gchar *uri_str = NULL;
+        gchar *key = NULL;
+        if (! g_str_has_prefix (sink->config.key, "/")) {
+          key = g_strdup_printf ("/%s", sink->config.key);
+        } else {
+          key = g_strdup ( sink->config.key );
+        }
+        uri = gst_uri_new ("s3", NULL, sink->config.bucket, GST_URI_NO_PORT, key, NULL, NULL);
+        uri_str = gst_uri_to_string (uri);
+        g_value_set_string (value, uri_str);
+        g_free (key);
+        g_free (uri_str);
+        gst_uri_unref (uri);
+      } else {
+        g_value_set_string (value, sink->config.location);
       }
-      else {
-        key = g_strdup ( sink->config.key );
-      }
-      uri = gst_uri_new ("s3", NULL, sink->config.bucket, GST_URI_NO_PORT, key, NULL, NULL);
-      uri_str = gst_uri_to_string (uri);
-      g_value_set_string (value, uri_str);
-      g_free (key);
-      g_free (uri_str);
-      gst_uri_unref (uri);
       break;
     }
     case PROP_ACL:
@@ -467,18 +460,13 @@ gst_s3_sink_get_property (GObject * object, guint prop_id, GValue * value,
 }
 
 static gboolean
-gst_s3_sink_is_null_or_empty (const gchar * str)
-{
-  return str == NULL || str[0] == '\0';
-}
-
-static gboolean
 gst_s3_sink_start (GstBaseSink * basesink)
 {
   GstS3Sink *sink = GST_S3_SINK (basesink);
 
-  if (gst_s3_sink_is_null_or_empty (sink->config.bucket)
-      || gst_s3_sink_is_null_or_empty (sink->config.key))
+  if (gst_s3_sink_is_null_or_empty (sink->config.location) && (
+      gst_s3_sink_is_null_or_empty (sink->config.bucket)
+      || gst_s3_sink_is_null_or_empty (sink->config.key)))
     goto no_destination;
 
   if (sink->uploader == NULL) {

@@ -36,6 +36,7 @@ typedef struct {
   gchar * region;
   gchar * bucket;
   gchar * key;
+  gchar * location;
   gchar * acl;
   gchar * content_type;
   gchar * ca_file;
