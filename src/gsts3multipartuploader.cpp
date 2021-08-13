@@ -174,7 +174,7 @@ static const Aws::String get_bucket_from_config(const GstS3UploaderConfig * conf
 
 static const Aws::String get_key_from_config(const GstS3UploaderConfig * config)
 {
-    if (is_null_or_empty(config->key)) {
+    if (is_null_or_empty(config->location)) {
         return config->key;
     } else {
         GstUri *uri = gst_uri_from_string(config->location);

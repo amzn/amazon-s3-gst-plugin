@@ -163,7 +163,7 @@ GST_START_TEST (test_location_property)
     "key", "new-key",
     NULL);
   g_object_get (sink, "location", &returned_location, NULL);
-  fail_if (0 == g_ascii_strcasecmp(location, returned_location));
+  fail_if (0 != g_ascii_strcasecmp(location, returned_location));
   g_free (returned_location);
 
   gst_object_unref (sink);
