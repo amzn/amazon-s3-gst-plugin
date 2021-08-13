@@ -402,27 +402,7 @@ gst_s3_sink_get_property (GObject * object, guint prop_id, GValue * value,
       g_value_set_string (value, sink->config.key);
       break;
     case PROP_LOCATION:
-    {
-      if (gst_s3_sink_is_null_or_empty(sink->config.location)) {
-        GstUri *uri = NULL;
-        gchar *uri_str = NULL;
-        gchar *key = NULL;
-        if (! g_str_has_prefix (sink->config.key, "/")) {
-          key = g_strdup_printf ("/%s", sink->config.key);
-        } else {
-          key = g_strdup ( sink->config.key );
-        }
-        uri = gst_uri_new ("s3", NULL, sink->config.bucket, GST_URI_NO_PORT, key, NULL, NULL);
-        uri_str = gst_uri_to_string (uri);
-        g_value_set_string (value, uri_str);
-        g_free (key);
-        g_free (uri_str);
-        gst_uri_unref (uri);
-      } else {
-        g_value_set_string (value, sink->config.location);
-      }
-      break;
-    }
+      g_value_set_string (value, sink->config.location);
     case PROP_ACL:
       g_value_set_string (value, sink->config.acl);
       break;
