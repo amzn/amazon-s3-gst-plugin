@@ -403,6 +403,7 @@ gst_s3_sink_get_property (GObject * object, guint prop_id, GValue * value,
       break;
     case PROP_LOCATION:
       g_value_set_string (value, sink->config.location);
+      break;
     case PROP_ACL:
       g_value_set_string (value, sink->config.acl);
       break;
