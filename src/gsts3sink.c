@@ -382,12 +382,6 @@ gst_s3_sink_set_property (GObject * object, guint prop_id,
   }
 }
 
-static gboolean
-gst_s3_sink_is_null_or_empty (const gchar * str)
-{
-  return str == NULL || str[0] == '\0';
-}
-
 static void
 gst_s3_sink_get_property (GObject * object, guint prop_id, GValue * value,
     GParamSpec * pspec)
@@ -438,6 +432,12 @@ gst_s3_sink_get_property (GObject * object, guint prop_id, GValue * value,
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
   }
+}
+
+static gboolean
+gst_s3_sink_is_null_or_empty (const gchar * str)
+{
+  return str == NULL || str[0] == '\0';
 }
 
 static gboolean
