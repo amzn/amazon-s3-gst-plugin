@@ -36,6 +36,7 @@ typedef struct {
   gchar * region;
   gchar * bucket;
   gchar * key;
+  gchar * location;
   gchar * acl;
   gchar * content_type;
   gchar * ca_file;
@@ -50,7 +51,7 @@ typedef struct {
 } GstS3UploaderConfig;
 
 #define GST_S3_UPLOADER_CONFIG_INIT (GstS3UploaderConfig) { \
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, \
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, \
   GST_S3_UPLOADER_CONFIG_DEFAULT_BUFFER_SIZE, \
   GST_S3_UPLOADER_CONFIG_DEFAULT_BUFFER_COUNT, \
   GST_S3_UPLOADER_CONFIG_DEFAULT_INIT_AWS_SDK, \
