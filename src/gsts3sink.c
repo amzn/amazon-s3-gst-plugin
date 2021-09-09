@@ -471,7 +471,7 @@ gst_s3_sink_start (GstBaseSink * basesink)
   }
   else
   {
-    GST_DEBUG_OBJECT (sink "started S3 upload %s", sink->config.location);
+    GST_DEBUG_OBJECT (sink, "started S3 upload %s", sink->config.location);
   }
 
   sink->is_started = TRUE;
