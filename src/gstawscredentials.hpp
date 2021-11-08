@@ -26,9 +26,11 @@
 
 using GstAWSCredentialsProviderFactory = std::function<std::unique_ptr<Aws::Auth::AWSCredentialsProvider>()>;
 
+GST_EXPORT
 GstAWSCredentials *
 gst_aws_credentials_new (GstAWSCredentialsProviderFactory factory);
 
+GST_EXPORT
 std::unique_ptr<Aws::Auth::AWSCredentialsProvider>
 gst_aws_credentials_create_provider (GstAWSCredentials * credentials);
 
