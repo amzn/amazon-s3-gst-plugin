@@ -9,9 +9,14 @@ gst_s3_public_headers = [
   'gstawscredentials.hpp'
 ]
 
+# Export symbols when building, import when not. This is optional on Linux
+# / macOS, but necessary on Windows otherwise .lib files will not be generated.
+symbol_export_define = ['-DGST_EXPORTS']
+
 credentials = library('gstawscredentials-@0@'.format(apiversion),
   ['gstawscredentials.cpp'],
   dependencies : [aws_cpp_sdk_sts_dep, gst_dep],
+  cpp_args: symbol_export_define,
   install : true
 )
 
@@ -30,6 +35,8 @@ multipart_uploader_dep = declare_dependency(link_with : multipart_uploader,
 
 gst_s3_elements = library('gsts3elements',
   gst_s3_elements_sources,
+  cpp_args: symbol_export_define,
+  c_args: symbol_export_define,
   dependencies : [gst_dep, gst_base_dep, multipart_uploader_dep, credentials_dep],
   include_directories : [configinc],
   install : true,

@@ -18,8 +18,6 @@
  */
 #include "gstawscredentials.hpp"
 
-#include <gst/gst.h>
-
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
 #include <aws/sts/model/AssumeRoleRequest.h>
 #include <aws/sts/STSClient.h>

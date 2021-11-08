@@ -65,6 +65,7 @@ struct _GstS3SinkClass {
   GstBaseSinkClass parent_class;
 };
 
+GST_EXPORT
 GType gst_s3_sink_get_type (void);
 
 G_END_DECLS
