@@ -40,8 +40,6 @@
 
 #include <gst/gst.h>
 
-GST_DEBUG_CATEGORY_EXTERN(gst_s3_sink_debug);
-
 namespace gst
 {
 namespace aws
