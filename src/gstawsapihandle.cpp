@@ -19,27 +19,22 @@
 
 #include "gstawsapihandle.hpp"
 
-
 #include <aws/core/Aws.h>
 #include <aws/core/utils/logging/AWSLogging.h>
 #include <aws/core/utils/logging/LogSystemInterface.h>
 
-#include <gst/gst.h>
-
-GST_DEBUG_CATEGORY_EXTERN(gst_aws_s3_debug);
-
 namespace gst {
 namespace aws {
 
-class Logger : public Aws::Utils::Logging::LogSystemInterface
+class Logger : public ::Aws::Utils::Logging::LogSystemInterface
 {
 public:
-    Aws::Utils::Logging::LogLevel GetLogLevel(void) const override
+    ::Aws::Utils::Logging::LogLevel GetLogLevel(void) const override
     {
         return _to_aws_log_level(gst_debug_category_get_threshold(gst_aws_s3_debug));
     }
 
-    void Log(Aws::Utils::Logging::LogLevel log_level, const char* tag, const char* format, ...) override
+    void Log(::Aws::Utils::Logging::LogLevel log_level, const char* tag, const char* format, ...) override
     {
         GstDebugLevel level = _to_gst_log_level(log_level);
         va_list varargs;
@@ -52,7 +47,7 @@ public:
         va_end (varargs);
     }
 
-    void LogStream(Aws::Utils::Logging::LogLevel log_level, const char* tag, const Aws::OStringStream &message_stream) override
+    void LogStream(::Aws::Utils::Logging::LogLevel log_level, const char* tag, const ::Aws::OStringStream &message_stream) override
     {
         Log(log_level, tag, "%s", message_stream.str().c_str());
     }
@@ -62,9 +57,9 @@ public:
     }
 
 private:
-    static Aws::Utils::Logging::LogLevel _to_aws_log_level(GstDebugLevel level)
+    static ::Aws::Utils::Logging::LogLevel _to_aws_log_level(GstDebugLevel level)
     {
-        using Aws::Utils::Logging::LogLevel;
+        using ::Aws::Utils::Logging::LogLevel;
         switch (level)
         {
             case GST_LEVEL_NONE: return LogLevel::Off;
@@ -77,9 +72,9 @@ private:
         }
     }
 
-    static GstDebugLevel _to_gst_log_level(Aws::Utils::Logging::LogLevel level)
+    static GstDebugLevel _to_gst_log_level(::Aws::Utils::Logging::LogLevel level)
     {
-        using Aws::Utils::Logging::LogLevel;
+        using ::Aws::Utils::Logging::LogLevel;
         switch (level)
         {
             case LogLevel::Off: return GST_LEVEL_NONE;
@@ -96,27 +91,28 @@ private:
 } // namespace s3
 
 using gst::aws::AwsApiHandle;
+
 AwsApiHandle::AwsApiHandle() {
-    Aws::Utils::Logging::InitializeAWSLogging(std::make_shared<Logger>());
-    Aws::SDKOptions options;
-    Aws::InitAPI(options);
+    ::Aws::Utils::Logging::InitializeAWSLogging(::std::make_shared<Logger>());
+    ::Aws::SDKOptions options;
+    ::Aws::InitAPI(options);
 }
 
 AwsApiHandle::~AwsApiHandle()
 {
-    Aws::ShutdownAPI(Aws::SDKOptions {});
-    Aws::Utils::Logging::ShutdownAWSLogging();
+    ::Aws::ShutdownAPI(::Aws::SDKOptions {});
+    ::Aws::Utils::Logging::ShutdownAWSLogging();
 }
 
 
-std::shared_ptr<AwsApiHandle> AwsApiHandle::GetHandle()
+::std::shared_ptr<AwsApiHandle> AwsApiHandle::GetHandle()
 {
-    static std::weak_ptr<AwsApiHandle> instance;
+    static ::std::weak_ptr<AwsApiHandle> instance;
     if (auto ptr = instance.lock()) {
         return ptr;
     }
 
-    std::shared_ptr<AwsApiHandle> ptr(new AwsApiHandle());
+    ::std::shared_ptr<AwsApiHandle> ptr(new AwsApiHandle());
     instance = ptr;
     return ptr;
 }

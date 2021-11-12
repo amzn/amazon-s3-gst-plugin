@@ -20,14 +20,19 @@
 #define __AWS_API__
 
 #include <memory>
+#include <gst/gst.h>
 
 namespace gst {
 namespace aws {
 
+G_BEGIN_DECLS
+
+GST_DEBUG_CATEGORY_EXTERN(gst_aws_s3_debug);
+
 class AwsApiHandle
 {
     public:
-        static std::shared_ptr<AwsApiHandle> GetHandle();
+        static ::std::shared_ptr<AwsApiHandle> GetHandle();
         virtual ~AwsApiHandle();
 
     protected:
@@ -40,5 +45,7 @@ class AwsApiHandle
 
 } // namespace aws
 } // namespace gst
+
+G_END_DECLS
 
 #endif /* __AWS_API__ */
