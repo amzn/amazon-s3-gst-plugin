@@ -48,35 +48,6 @@ namespace aws
 namespace s3
 {
 
-static const Aws::String get_bucket_from_config(const GstS3UploaderConfig * config)
-{
-    if (is_null_or_empty(config->location)) {
-        return config->bucket;
-    } else {
-        GstUri *uri = gst_uri_from_string(config->location);
-        Aws::String bucket(gst_uri_get_host(uri));
-        gst_uri_unref(uri);
-        return bucket;
-    }
-}
-
-static const Aws::String get_key_from_config(const GstS3UploaderConfig * config)
-{
-    if (is_null_or_empty(config->location)) {
-        return config->key;
-    } else {
-        GstUri *uri = gst_uri_from_string(config->location);
-        Aws::String path(gst_uri_get_path(uri));
-        gst_uri_unref(uri);
-
-        if (path[0] == '/') {
-            return path.substr(1);
-        } else {
-            return path;
-        }
-    }
-}
-
 using BufferManager = Aws::Utils::ExclusiveOwnershipResourceManager<uint8_t*>;
 
 class PartState

@@ -22,10 +22,16 @@
 
 #include <aws/core/client/ClientConfiguration.h>
 
+#include "gsts3uploaderconfig.h"
+
 bool get_bucket_location   (const char* bucket_name,
                             const Aws::Client::ClientConfiguration& client_config,
                             Aws::String& location);
 
 bool is_null_or_empty  (const char* str);
+
+const Aws::String get_bucket_from_config(const GstS3UploaderConfig * config);
+
+const Aws::String get_key_from_config(const GstS3UploaderConfig * config);
 
 #endif // __GST_AWS_UTILS_HPP__

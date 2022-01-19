@@ -42,8 +42,8 @@ struct _GstS3Downloader {
 };
 
 _GstS3Downloader::_GstS3Downloader(const GstS3UploaderConfig *config) :
-    _bucket(config->bucket),
-    _key(config->key),
+    _bucket(std::move(get_bucket_from_config(config))),
+    _key(std::move(get_key_from_config(config))),
     _api_handle(config->init_aws_sdk ? gst::aws::AwsApiHandle::GetHandle() : nullptr)
 {
 }
