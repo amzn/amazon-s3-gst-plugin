@@ -20,8 +20,6 @@
 
 #include "gstawsutils.hpp"
 
-#include <gst/gst.h>
-
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
 #include <aws/sts/model/AssumeRoleRequest.h>
 #include <aws/sts/STSClient.h>
@@ -217,6 +215,7 @@ _do_init (GType g_define_type_id)
     (GstValueCompareFunc) NULL,
     (GstValueSerializeFunc) NULL,
     (GstValueDeserializeFunc) _gst_aws_credentials_deserialize_valfunc,
+    (GstValueDeserializeWithPSpecFunc) NULL,
     { NULL }
   };
 
