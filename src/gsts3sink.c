@@ -72,6 +72,7 @@ enum
   PROP_AWS_SDK_USE_HTTP,
   PROP_AWS_SDK_VERIFY_SSL,
   PROP_AWS_SDK_S3_SIGN_PAYLOAD,
+  PROP_AWS_SDK_REQUEST_TIMEOUT,
   PROP_LAST
 };
 
@@ -232,6 +233,13 @@ gst_s3_sink_class_init (GstS3SinkClass * klass)
           GST_S3_UPLOADER_CONFIG_DEFAULT_PROP_AWS_SDK_S3_SIGN_PAYLOAD,
           G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property (gobject_class,  PROP_AWS_SDK_REQUEST_TIMEOUT,
+      g_param_spec_int ("aws-sdk-request-timeout", "AWS SDK Request Timeout (milliseconds)",
+          "The request timeout to be used on the uploader and downloader; -1 is ignored",
+          GST_S3_UPLOADER_CONFIG_DEFAULT_PROP_AWS_SDK_REQUEST_TIMEOUT, G_MAXINT32, /* min / max */
+          GST_S3_UPLOADER_CONFIG_DEFAULT_PROP_AWS_SDK_REQUEST_TIMEOUT,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
   gst_element_class_set_static_metadata (gstelement_class,
       "S3 Sink",
       "Sink/S3", "Write stream to an Amazon S3 bucket",
@@ -388,6 +396,9 @@ gst_s3_sink_set_property (GObject * object, guint prop_id,
     case PROP_AWS_SDK_S3_SIGN_PAYLOAD:
       sink->config.aws_sdk_s3_sign_payload = g_value_get_boolean (value);
       break;
+    case PROP_AWS_SDK_REQUEST_TIMEOUT:
+      sink->config.aws_sdk_request_timeout_ms = g_value_get_int (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -439,6 +450,9 @@ gst_s3_sink_get_property (GObject * object, guint prop_id, GValue * value,
       break;
     case PROP_AWS_SDK_S3_SIGN_PAYLOAD:
       g_value_set_boolean (value, sink->config.aws_sdk_s3_sign_payload);
+      break;
+    case PROP_AWS_SDK_REQUEST_TIMEOUT:
+      g_value_set_int (value, sink->config.aws_sdk_request_timeout_ms);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);

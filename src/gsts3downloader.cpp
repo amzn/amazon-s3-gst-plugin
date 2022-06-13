@@ -72,6 +72,10 @@ bool _GstS3Downloader::_init_downloader(const GstS3UploaderConfig *config)
     client_config.region = config->region;
   }
 
+  if (config->aws_sdk_request_timeout_ms != GST_S3_UPLOADER_CONFIG_DEFAULT_PROP_AWS_SDK_REQUEST_TIMEOUT) {
+      client_config.requestTimeoutMs = config->aws_sdk_request_timeout_ms;
+  }
+
   auto credentials_provider = gst_aws_credentials_create_provider(config->credentials);
   if (!credentials_provider)
   {
