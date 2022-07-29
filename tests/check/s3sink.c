@@ -465,7 +465,7 @@ s3sink_suite (void)
   Suite *s = suite_create ("s3sink");
   TCase *tc_chain = tcase_create ("general");
 
-  tcase_set_timeout (tc_chain, 20);
+  tcase_set_timeout (tc_chain, 30);
 
   suite_add_tcase (s, tc_chain);
   tcase_add_test (tc_chain, test_no_bucket_and_key_then_start_should_fail);
