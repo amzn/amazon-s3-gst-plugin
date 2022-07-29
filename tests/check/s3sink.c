@@ -132,6 +132,30 @@ push_bytes_finalize:
 #define PUSH_BYTES(pad, num_bytes) fail_if (!push_bytes(pad, num_bytes, GST_FLOW_OK))
 #define PUSH_BYTES_FAILURE(pad, num_bytes) fail_if (!push_bytes(pad, num_bytes, GST_FLOW_ERROR))
 
+/**
+ * @brief Before pushing buffers/bytes one must send a stream start and a segment declaration
+ * or else critical errors will occur.
+ *
+ * @param srcpad The pad to send the events onto.
+ * @param stream_name nullable, the name of the stream
+ * @return gboolean TRUE if the events were set; FALSE otherwise.
+ */
+static gboolean
+prepare_to_push_bytes (GstPad *srcpad, const char* stream_name) {
+  gboolean ret = TRUE;
+  GstSegment segment;
+  const char* name = (stream_name) ? stream_name : "test";
+
+  gst_segment_init(&segment, GST_FORMAT_BYTES);
+  ret = (
+    gst_pad_push_event(srcpad, gst_event_new_stream_start(name))
+    &&
+    gst_pad_push_event(srcpad, gst_event_new_segment(&segment))
+  );
+
+  return ret;
+}
+
 static GstElement *
 setup_default_s3_sink (GstS3Uploader *uploader)
 {
@@ -269,6 +293,8 @@ GST_START_TEST (test_send_eos_should_flush_buffer)
   ret = gst_element_set_state (sink, GST_STATE_PLAYING);
   fail_unless (ret == GST_STATE_CHANGE_ASYNC);
 
+  fail_unless(TRUE == prepare_to_push_bytes(srcpad, NULL));
+
   PUSH_BYTES(srcpad, 10);
 
   sinkpad = gst_element_get_static_pad (sink, "sink");
@@ -302,6 +328,8 @@ GST_START_TEST (test_push_buffer_should_flush_buffer_if_reaches_limit)
   ret = gst_element_set_state (sink, GST_STATE_PLAYING);
   fail_unless (ret == GST_STATE_CHANGE_ASYNC);
 
+  fail_unless(TRUE == prepare_to_push_bytes(srcpad, NULL));
+
   for (idx = 0; idx < 16; idx++) {
     PUSH_BYTES (srcpad, 1024 * 1024);
   }
@@ -332,6 +360,8 @@ GST_START_TEST (test_query_position)
 
   ret = gst_element_set_state (sink, GST_STATE_PLAYING);
   fail_unless (ret == GST_STATE_CHANGE_ASYNC);
+
+  fail_unless(TRUE == prepare_to_push_bytes(srcpad, NULL));
 
   PUSH_BYTES(srcpad, bytes_to_write);
 
@@ -391,6 +421,8 @@ GST_START_TEST (test_upload_part_failure)
   ret = gst_element_set_state (sink, GST_STATE_PLAYING);
   fail_unless (ret == GST_STATE_CHANGE_ASYNC);
 
+  fail_unless(TRUE == prepare_to_push_bytes(srcpad, NULL));
+
   PUSH_BYTES(srcpad, bytes_to_write);
   PUSH_BYTES(srcpad, bytes_to_write);
   PUSH_BYTES_FAILURE(srcpad, bytes_to_write);
@@ -414,6 +446,8 @@ GST_START_TEST (test_push_empty_buffer)
 
   ret = gst_element_set_state (sink, GST_STATE_PLAYING);
   fail_unless (ret == GST_STATE_CHANGE_ASYNC);
+
+  fail_unless(TRUE == prepare_to_push_bytes(srcpad, NULL));
 
   fail_unless_equals_int (gst_pad_push (srcpad, gst_buffer_new ()), GST_FLOW_OK);
 
