@@ -159,13 +159,13 @@ prepare_to_push_bytes (GstPad *srcpad, const char* stream_name) {
 static GstElement *
 setup_default_s3_sink (GstS3Uploader *uploader)
 {
-  GstElement *sink = gst_element_factory_make ("s3sink", "sink");
+  GstElement *sink =  gst_element_factory_make_full("s3sink",
+    "name", "sink",
+    "bucket", "some-bucket",
+    "key", "some-key",
+    NULL);
 
   if (sink) {
-    g_object_set (sink,
-      "bucket", "some-bucket",
-      "key", "some-key",
-      NULL);
     GST_S3_SINK (sink)->uploader = uploader;
   }
 
