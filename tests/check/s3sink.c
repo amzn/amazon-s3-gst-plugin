@@ -378,25 +378,59 @@ GST_END_TEST
 
 GST_START_TEST (test_query_seeking)
 {
-  const GstFormat expected_format = GST_FORMAT_DEFAULT;
+  /**
+   * @brief s3sink is seekable.  Its responses to formats should be:
+   *    GST_FORMAT_DEFAULT -> GST_FORMAT_BYTES
+   *    GST_FORMAT_BYTES   -> GST_FORMAT_BYTES
+   *    all other formats  -> FALSE
+   *
+   * NOTE: the GstElement base class randomly selects a pad to query and
+   * if it lands on a sink pad tries to get the peer pad for performing
+   * the query.  Since the unit under test here isn't connected to a peer,
+   * the query will return false after dropping the query.  So, we query
+   * the sink pad directly on the element.
+   */
+  GstFormat expected_format;
   GstFormat format;
   gboolean seekable;
   GstElement *sink = setup_default_s3_sink (test_uploader_new (-1, FALSE));
+  GstPad *sinkpad = NULL;
   GstStateChangeReturn ret;
+  GstQuery *query = NULL;
 
   fail_if (sink == NULL);
+
+  sinkpad = gst_element_get_static_pad(sink, "sink");
+  fail_if (sinkpad == NULL);
 
   ret = gst_element_set_state (sink, GST_STATE_PLAYING);
   fail_unless (ret == GST_STATE_CHANGE_ASYNC);
 
-  GstQuery* query = gst_query_new_seeking (expected_format);
-
-  gst_element_query (sink, query);
-
+  // default -> bytes
+  expected_format = GST_FORMAT_BYTES;
+  query = gst_query_new_seeking (GST_FORMAT_DEFAULT);
+  gst_pad_query(sinkpad, query);
   gst_query_parse_seeking (query, &format, &seekable, NULL, NULL);
-  fail_if (seekable == TRUE);
+  fail_if (seekable != TRUE);
   fail_unless (format == expected_format);
+  gst_query_unref (query);
 
+  // bytes -> bytes
+  expected_format = GST_FORMAT_BYTES;
+  query = gst_query_new_seeking (expected_format);
+  gst_pad_query(sinkpad, query);
+  gst_query_parse_seeking (query, &format, &seekable, NULL, NULL);
+  fail_if (seekable != TRUE);
+  fail_unless (format == expected_format);
+  gst_query_unref (query);
+
+  // anything else -> nope.
+  expected_format = GST_FORMAT_BUFFERS;
+  query = gst_query_new_seeking (expected_format);
+  gst_pad_query(sinkpad, query);
+  gst_query_parse_seeking (query, &format, &seekable, NULL, NULL);
+  fail_if (seekable != FALSE);
+  fail_unless (format == expected_format);
   gst_query_unref (query);
 
   gst_element_set_state (sink, GST_STATE_NULL);
