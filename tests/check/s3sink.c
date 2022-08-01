@@ -491,6 +491,78 @@ GST_START_TEST (test_push_empty_buffer)
 }
 GST_END_TEST
 
+GST_START_TEST (test_rewrite_header)
+{
+  /**
+   * The purpose of this test is to verify correct behavior when an upstream
+   * element seeks back to the start, re-writes some amount of data, and then
+   * sends an EOS.  Per other tests, on EOS, the element is to flush its buffer,
+   * so if that pre-EOS push was already sent, then the "flush" should not
+   * result in any change to data.
+   *
+   * This test is specifically related to the mp4mux element but may apply to
+   * others.
+   */
+  GstElement *sink = NULL;
+  GstPad *srcpad = NULL;
+  GstPad *sinkpad = NULL;
+  GstStateChangeReturn ret;
+  TestUploader *uploader = NULL;
+  guint packets_per_buffer = 5;
+  guint packet_size = 1024 * 1024;     // bytes
+  guint buffer_size = packets_per_buffer * packet_size;
+  guint count;
+
+  // Setup the test apparatus
+  uploader = (TestUploader *) test_uploader_new (-1, FALSE);
+  sink = setup_default_s3_sink ((GstS3Uploader*) uploader);
+  fail_if (sink == NULL);
+  g_object_set(sink, "buffer-size", 5*1024*1024, NULL);
+
+  srcpad = gst_check_setup_src_pad (sink, &srctemplate);
+  gst_pad_set_active (srcpad, TRUE);
+
+  sinkpad = gst_element_get_static_pad (sink, "sink");
+  fail_if (sinkpad == NULL);
+
+  ret = gst_element_set_state (sink, GST_STATE_PLAYING);
+  fail_unless (ret == GST_STATE_CHANGE_ASYNC);
+
+  // Push two buffers worth of packets.
+  // The uploader should show a count of 2.
+  // Internally, the s3sink will have created the third buffer.
+  prepare_to_push_bytes(srcpad, "seek_test");
+  PUSH_BYTES(srcpad, buffer_size * 2);
+  fail_unless_equals_int(uploader->upload_part_count, 2);
+
+  // seek back to beginning to re-write 1 packet.
+  // This should NOT require a flush of any kind, so the uploader
+  // count should still be 2.
+  {
+    GstSegment segment;
+    gst_segment_init(&segment, GST_FORMAT_BYTES);
+    segment.position = 0;
+    gst_pad_push_event(srcpad, gst_event_new_segment(&segment));
+  }
+  fail_unless_equals_int(uploader->upload_part_count, 2);
+
+  // push 1 packet at the head.  Output should still only be 2.
+  PUSH_BYTES(srcpad, packet_size);
+  fail_unless_equals_int(uploader->upload_part_count, 2);
+
+  // send eos which should flush the buffer, i.e., finish uploading
+  // the partial buffer that was just written, so upload count
+  // should go to 3.
+  gst_pad_push_event(srcpad, gst_event_new_eos());
+  fail_unless_equals_int(uploader->upload_part_count, 3);
+
+  gst_element_set_state (sink, GST_STATE_NULL);
+  gst_clear_object(&srcpad);
+  gst_clear_object(&sinkpad);
+  gst_clear_object(&sink);
+}
+GST_END_TEST
+
 GST_PLUGIN_STATIC_DECLARE(s3elements);
 
 static Suite *
@@ -512,6 +584,7 @@ s3sink_suite (void)
   tcase_add_test (tc_chain, test_query_seeking);
   tcase_add_test (tc_chain, test_upload_part_failure);
   tcase_add_test (tc_chain, test_push_empty_buffer);
+  tcase_add_test (tc_chain, test_rewrite_header);
 
   return s;
 }
