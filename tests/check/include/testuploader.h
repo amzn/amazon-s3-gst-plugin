@@ -11,11 +11,24 @@ typedef struct {
     gint upload_part_count;
 } TestUploader;
 
+typedef struct {
+  gint upload_part_count;
+} TestUploaderStats;
+
+static TestUploaderStats prev_test_uploader_stats = {0,};
+
 #define TEST_UPLOADER(uploader) ((TestUploader*) uploader)
+
+static void
+test_uploader_reset_prev_stats()
+{
+  prev_test_uploader_stats.upload_part_count = 0;
+}
 
 static void
 test_uploader_destroy (GstS3Uploader * uploader)
 {
+  prev_test_uploader_stats.upload_part_count = TEST_UPLOADER(uploader)->upload_part_count;
   g_free(uploader);
 }
 
