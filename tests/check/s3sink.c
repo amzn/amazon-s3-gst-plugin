@@ -16,89 +16,16 @@
  * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
-#include "gsts3uploader.h"
+#include <gst/check/gstcheck.h>
+
 #include "gsts3sink.h"
 
-#include <gst/check/gstcheck.h>
+#include "include/testuploader.h"
 
 static GstStaticPadTemplate srctemplate = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS_ANY);
-
-/************* TEST UPLOADER *************/
-typedef struct {
-    GstS3Uploader base;
-    gint fail_upload_retry;
-    gboolean fail_complete;
-
-    gint upload_part_count;
-} TestUploader;
-
-#define TEST_UPLOADER(uploader) ((TestUploader*) uploader)
-
-static void
-test_uploader_destroy (GstS3Uploader * uploader)
-{
-  g_free(uploader);
-}
-
-static gboolean
-test_uploader_upload_part (GstS3Uploader * uploader, G_GNUC_UNUSED const gchar * buffer, G_GNUC_UNUSED gsize size)
-{
-  gboolean ok = TEST_UPLOADER(uploader)->fail_upload_retry != 0;
-
-  TEST_UPLOADER(uploader)->upload_part_count++;
-
-  if (ok) {
-    TEST_UPLOADER(uploader)->fail_upload_retry--;
-  }
-
-  return ok;
-}
-
-static gboolean
-test_uploader_upload_part_copy (GstS3Uploader * uploader, G_GNUC_UNUSED const gchar * bucket,
-  G_GNUC_UNUSED const gchar * key, G_GNUC_UNUSED gsize first, G_GNUC_UNUSED gsize last)
-{
-  gboolean ok = TEST_UPLOADER(uploader)->fail_upload_retry != 0;
-
-  TEST_UPLOADER(uploader)->upload_part_count++;
-
-  if (ok) {
-    TEST_UPLOADER(uploader)->fail_upload_retry--;
-  }
-
-  return ok;
-}
-
-static gboolean
-test_uploader_complete (GstS3Uploader * uploader)
-{
-  return !TEST_UPLOADER(uploader)->fail_complete;
-}
-
-static GstS3UploaderClass test_uploader_class = {
-  test_uploader_destroy,
-  test_uploader_upload_part,
-  test_uploader_upload_part_copy,
-  test_uploader_complete
-};
-
-static GstS3Uploader*
-test_uploader_new (gint fail_upload_retry, gboolean fail_complete)
-{
-  TestUploader *uploader = g_new(TestUploader, 1);
-
-  uploader->base.klass = &test_uploader_class;
-  uploader->fail_upload_retry = fail_upload_retry;
-  uploader->fail_complete = fail_complete;
-  uploader->upload_part_count = 0;
-
-  return (GstS3Uploader*) uploader;
-}
-
-/************* TEST UPLOADER END *************/
 
 static gboolean
 push_bytes(GstPad *pad, size_t num_bytes, GstFlowReturn expected_ret_code)

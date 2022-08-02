@@ -1,10 +1,12 @@
 element_tests = ['s3sink.c']
 
+element_tests_includes = include_directories('.')
+
 foreach test_file : element_tests
   test_name = test_file.split('.').get(0).underscorify()
 
   exe = executable(test_name, test_file,
-    include_directories : [configinc],
+    include_directories : [configinc, element_tests_includes],
     dependencies : [s3elements_dep, gst_check_dep]
   )
 
