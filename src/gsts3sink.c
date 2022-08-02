@@ -55,6 +55,12 @@ GST_DEBUG_CATEGORY (gst_s3_sink_debug);
 
 #define REQUIRED_BUT_UNUSED(x) (void)(x)
 
+// boilerplate
+GstS3SinkClass* GST_S3_SINK_GET_CLASS(gpointer *ptr)
+{
+  return G_TYPE_INSTANCE_GET_CLASS(ptr, GST_TYPE_S3_SINK, GstS3SinkClass);
+}
+
 enum
 {
   PROP_0,
@@ -156,6 +162,9 @@ gst_s3_sink_class_init (GstS3SinkClass * klass)
   gobject_class->dispose = gst_s3_sink_dispose;
   gobject_class->set_property = gst_s3_sink_set_property;
   gobject_class->get_property = gst_s3_sink_get_property;
+
+  klass->downloader_new = gst_s3_downloader_new;
+  klass->uploader_new = gst_s3_multipart_uploader_new;
 
   g_object_class_install_property (gobject_class, PROP_BUCKET,
       g_param_spec_string ("bucket", "S3 bucket",
@@ -477,11 +486,11 @@ gst_s3_sink_start (GstBaseSink * basesink)
     goto no_destination;
 
   if (sink->uploader == NULL) {
-    sink->uploader = gst_s3_multipart_uploader_new (&sink->config);
+    sink->uploader = GST_S3_SINK_GET_CLASS((gpointer*) sink)->uploader_new (&sink->config);
   }
 
   if (sink->downloader == NULL) {
-    sink->downloader = gst_s3_downloader_new (&sink->config);
+    sink->downloader = GST_S3_SINK_GET_CLASS((gpointer *) sink)->downloader_new (&sink->config);
   }
 
   if (!sink->uploader)
@@ -826,7 +835,7 @@ gst_s3_sink_do_seek (GstS3Sink * sink, guint64 new_offset)
     if (!gst_s3_sink_do_flush(sink))
       goto flush_failed;
 
-    sink->uploader = gst_s3_multipart_uploader_new (&sink->config);
+    sink->uploader = GST_S3_SINK_GET_CLASS((gpointer*) sink)->uploader_new (&sink->config);
 
     new_pos = MIN(new_offset, sink->upload_size);
     if (new_pos >= sink->config.buffer_size) {

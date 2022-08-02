@@ -72,7 +72,15 @@ struct _GstS3Sink {
 
 struct _GstS3SinkClass {
   GstBaseSinkClass parent_class;
+
+  GstS3Uploader*   (*uploader_new)   (const GstS3UploaderConfig *config);
+  GstS3Downloader* (*downloader_new) (const GstS3UploaderConfig *config);
 };
+
+// When declaring a type using boilerplate GST_TYPE kit, this method
+// is produced in the macro in the header.
+GST_EXPORT
+GstS3SinkClass* GST_S3_SINK_GET_CLASS(gpointer *ptr);
 
 GST_EXPORT
 GType gst_s3_sink_get_type (void);
