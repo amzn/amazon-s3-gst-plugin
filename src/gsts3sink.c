@@ -274,7 +274,7 @@ gst_s3_destroy_uploader (GstS3Sink * sink)
 static void gst_s3_destroy_downloader (GstS3Sink * sink)
 {
   if (sink->downloader) {
-    gst_s3_downloader_free (sink->downloader);
+    gst_s3_downloader_destroy (sink->downloader);
     sink->downloader = NULL;
   }
 }
