@@ -521,6 +521,111 @@ GST_START_TEST (test_seek_to_active_part)
 }
 GST_END_TEST
 
+GST_START_TEST (test_seek_to_middle_part_short)
+{
+  /**
+   * This test verifies the case where several parts are pushed and a seek
+   * request moves the offset to within a previously uploaded part (but not
+   * the first part).  In this case we expect:
+   * 1. The uploader to flush (complete) the active buffer
+   * 2. Copy-upload the previous part(s) from 0->offset
+   *    (log will say "using multipart upload copy")
+   * 3. Any data pushed thereafter will be treated as per the usual
+   * 4. EOS will copy-upload any previously uploaded data not including
+   *    what was pushed in (3).
+   *
+   * NOTE: This test edits the second part with a partially filled third
+   *       part.  This means the last part is downloaded then re-uploaded.
+   */
+  GstElement *sink = NULL;
+  GstPad *srcpad = NULL;
+  GstStateChangeReturn ret;
+  guint packets_per_buffer = 5;
+  guint packet_size = 1024 * 1024;
+  guint buffer_size = packets_per_buffer * packet_size;
+  guint total_size = buffer_size * 2 + packet_size * 3;
+
+  // Setup the test apparatus so the s3sink calls our constructors for the
+  // uploader and downloader instances.
+  sink = setup_default_s3_sink (NULL, NULL);
+  fail_if (sink == NULL);
+  g_object_set(sink, "buffer-size", buffer_size, NULL);
+  GST_S3_SINK_GET_CLASS((gpointer*) sink)->uploader_new = s3sink_make_new_test_uploader;
+  GST_S3_SINK_GET_CLASS((gpointer*) sink)->downloader_new = s3sink_make_new_test_downloader;
+
+  srcpad = gst_check_setup_src_pad (sink, &srctemplate);
+  gst_pad_set_active (srcpad, TRUE);
+
+  ret = gst_element_set_state (sink, GST_STATE_PLAYING);
+  fail_unless (ret == GST_STATE_CHANGE_ASYNC);
+
+  // Push a few packets over two buffers worth of data
+  // The uploader should show a count of 2.
+  // Internally, the s3sink will have created the third
+  // buffer and began filling it.
+  prepare_to_push_bytes(srcpad, "seek_test");
+  PUSH_BYTES(srcpad, total_size);
+  fail_unless_equals_int(S3SINK_UPLOADER(sink)->upload_part_count, 2);
+
+  // Seek back to the middle somewhere, causing the buffer to flush,
+  // uploader to be destroyed, and a download from 0->(segment.start)-1
+  // (the download is via the copy-upload API).
+  {
+    GstSegment segment;
+    gst_segment_init(&segment, GST_FORMAT_BYTES);
+    segment.start = buffer_size + packet_size + 16;
+    gst_pad_push_event(srcpad, gst_event_new_segment(&segment));
+
+    // 'uploader' destroyed after uploading 3rd part.
+    fail_unless_equals_int(prev_test_uploader_stats.upload_part_count, 3);
+
+    // seek should have caused a new uploader to be created and an upload copy event
+    // to buffer up the 0->segment.start-1 portion from s3.
+    fail_unless_equals_int(S3SINK_UPLOADER(sink)->upload_part_count, 0);
+    fail_unless_equals_int(S3SINK_UPLOADER(sink)->upload_copy_part_count, 1);
+
+    // 'downloader' shows no activity; this was a copy-upload event
+    fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->downloads_requested, 0);
+    fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->bytes_downloaded, 0);
+  }
+
+  // Push the change
+  // No changes to uploader or downloader are expected
+  PUSH_BYTES(srcpad, 16);
+  fail_unless_equals_int(S3SINK_UPLOADER(sink)->upload_part_count, 0);
+  fail_unless_equals_int(S3SINK_UPLOADER(sink)->upload_copy_part_count, 1);
+  fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->downloads_requested, 0);
+
+  // send eos.
+  // This should cause:
+  // 1. Destruction of uploader (use 'prev' stats for verification)
+  // 2. Download (post-fill) from current position to 1 full part.
+  //    post_fill = buffer_size - 16
+  // 3. Upload #2 (upload part)
+  // 4. Re-upload last /remaining partial part (download + upload part)
+  //    size is end of post-fill to total size, so:
+  //    last_part = total_size - current_pos
+  //              = total_size - (seek_pos + write_size + post_fill)
+  //              = total_size - (buffer_size + packet_size + 16 + 16 + buffer_size - 16)
+  //    bytes_downloaded
+  //      = post_fill + last_part
+  //      = (buffer_size - 16) + (total_size - (buffer_size + packet_size + 16 + 16 + buffer_size - 16))
+  //      = buffer_size - 16 + total_size - buffer_size - packet_size - 16 - 16 - buffer_size + 16
+  //      = total_size - buffer_size - packet_size - 16 - 16
+  gst_pad_push_event(srcpad, gst_event_new_eos());
+  fail_unless_equals_int(prev_test_uploader_stats.upload_part_count, 2);
+  fail_unless_equals_int(prev_test_uploader_stats.upload_copy_part_count, 1);
+  fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->downloads_requested, 2);
+  fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->bytes_downloaded,
+    total_size - buffer_size - packet_size - 16 - 16);
+
+  test_uploader_reset_prev_stats();
+  gst_element_set_state (sink, GST_STATE_NULL);
+  gst_clear_object(&srcpad);
+  gst_clear_object(&sink);
+}
+GST_END_TEST
+
 GST_START_TEST (test_seek_to_first_part)
 {
   /**
@@ -644,6 +749,7 @@ s3sink_suite (void)
   tcase_add_test (tc_chain, test_upload_part_failure);
   tcase_add_test (tc_chain, test_push_empty_buffer);
   tcase_add_test (tc_chain, test_seek_to_active_part);
+  tcase_add_test (tc_chain, test_seek_to_middle_part_short);
   tcase_add_test (tc_chain, test_seek_to_first_part);
 
   return s;
