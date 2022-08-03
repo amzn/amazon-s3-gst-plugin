@@ -439,6 +439,84 @@ s3sink_make_new_test_downloader( G_GNUC_UNUSED const GstS3UploaderConfig *config
 #define S3SINK_UPLOADER(obj) ((TestUploader*) GST_S3_SINK(obj)->uploader)
 #define S3SINK_DOWNLOADER(obj) ((TestDownloader*) GST_S3_SINK(obj)->downloader)
 
+GST_START_TEST (test_seek_to_active_part)
+{
+  /**
+   * This test verifies the case where several parts are pushed and a seek
+   * request moves the offset to within the part being filled.  This kind
+   * of seek should not destroy the uploader or cause any download, back-fill,
+   * or other types of behaviors since the buffer is still in memory at the
+   * uploader instance.
+   */
+  GstElement *sink = NULL;
+  GstPad *srcpad = NULL;
+  GstStateChangeReturn ret;
+  guint packets_per_buffer = 5;
+  guint packet_size = 1024 * 1024;
+  guint buffer_size = packets_per_buffer * packet_size;
+
+  // Setup the test apparatus so the s3sink calls our constructors for the
+  // uploader and downloader instances.
+  sink = setup_default_s3_sink (NULL, NULL);
+  fail_if (sink == NULL);
+  g_object_set(sink, "buffer-size", buffer_size, NULL);
+  GST_S3_SINK_GET_CLASS((gpointer*) sink)->uploader_new = s3sink_make_new_test_uploader;
+  GST_S3_SINK_GET_CLASS((gpointer*) sink)->downloader_new = s3sink_make_new_test_downloader;
+
+  srcpad = gst_check_setup_src_pad (sink, &srctemplate);
+  gst_pad_set_active (srcpad, TRUE);
+
+  ret = gst_element_set_state (sink, GST_STATE_PLAYING);
+  fail_unless (ret == GST_STATE_CHANGE_ASYNC);
+
+  // Push a few packets over two buffers worth of data
+  // The uploader should show a count of 2.
+  // Internally, the s3sink will have created the third
+  // buffer and began filling it.
+  prepare_to_push_bytes(srcpad, "seek_test");
+  PUSH_BYTES(srcpad, buffer_size * 2 + packet_size * 3);
+  fail_unless_equals_int(S3SINK_UPLOADER(sink)->upload_part_count, 2);
+
+  // Seek back to within that last part
+  {
+    GstSegment segment;
+    gst_segment_init(&segment, GST_FORMAT_BYTES);
+    segment.start = buffer_size * 2 + packet_size;
+    gst_pad_push_event(srcpad, gst_event_new_segment(&segment));
+
+    // 'uploader' is not trashed; read from it directly that the uploaded
+    // parts is still 2.
+    fail_unless_equals_int(S3SINK_UPLOADER(sink)->upload_part_count, 2);
+
+    // There should be no downloads so far.
+    fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->downloads_requested, 0);
+    fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->bytes_downloaded, 0);
+  }
+
+  // Push the change of this example, a packet
+  // Again, no upload/download activity is expected since we're still within
+  // the same third buffer.
+  PUSH_BYTES(srcpad, packet_size);
+  fail_unless_equals_int(S3SINK_UPLOADER(sink)->upload_part_count, 2);
+  fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->downloads_requested, 0);
+  fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->bytes_downloaded, 0);
+
+  // send eos.
+  // This should cause the last buffer to flush (upload) which will destroy
+  // the uploader, so we check the 'prev' stats for a value of 3.  No downloads
+  // should have happened.
+  gst_pad_push_event(srcpad, gst_event_new_eos());
+  fail_unless_equals_int(prev_test_uploader_stats.upload_part_count, 3);
+  fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->downloads_requested, 0);
+  fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->bytes_downloaded, 0);
+
+  test_uploader_reset_prev_stats();
+  gst_element_set_state (sink, GST_STATE_NULL);
+  gst_clear_object(&srcpad);
+  gst_clear_object(&sink);
+}
+GST_END_TEST
+
 GST_START_TEST (test_seek_to_first_part)
 {
   /**
@@ -556,6 +634,7 @@ s3sink_suite (void)
   tcase_add_test (tc_chain, test_query_seeking);
   tcase_add_test (tc_chain, test_upload_part_failure);
   tcase_add_test (tc_chain, test_push_empty_buffer);
+  tcase_add_test (tc_chain, test_seek_to_active_part);
   tcase_add_test (tc_chain, test_seek_to_first_part);
 
   return s;
