@@ -232,7 +232,7 @@ GST_START_TEST (test_send_eos_should_flush_buffer)
   gst_pad_send_event(sinkpad, gst_event_new_eos ());
   gst_object_unref (sinkpad);
 
-  fail_unless_equals_int(1, uploader->upload_part_count);
+  fail_unless_equals_int(1, prev_test_uploader_stats.upload_part_count);
 
   gst_element_set_state (sink, GST_STATE_NULL);
   gst_object_unref (sink);
