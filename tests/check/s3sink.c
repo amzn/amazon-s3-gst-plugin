@@ -476,6 +476,7 @@ GST_START_TEST (test_seek_to_active_part)
   prepare_to_push_bytes(srcpad, "seek_test");
   PUSH_BYTES(srcpad, buffer_size * 2 + packet_size * 3);
   fail_unless_equals_int(S3SINK_UPLOADER(sink)->upload_part_count, 2);
+  fail_unless_equals_int(S3SINK_UPLOADER(sink)->upload_copy_part_count, 0);
 
   // Seek back to within that last part
   {
@@ -487,6 +488,7 @@ GST_START_TEST (test_seek_to_active_part)
     // 'uploader' is not trashed; read from it directly that the uploaded
     // parts is still 2.
     fail_unless_equals_int(S3SINK_UPLOADER(sink)->upload_part_count, 2);
+    fail_unless_equals_int(S3SINK_UPLOADER(sink)->upload_copy_part_count, 0);
 
     // There should be no downloads so far.
     fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->downloads_requested, 0);
@@ -498,6 +500,7 @@ GST_START_TEST (test_seek_to_active_part)
   // the same third buffer.
   PUSH_BYTES(srcpad, packet_size);
   fail_unless_equals_int(S3SINK_UPLOADER(sink)->upload_part_count, 2);
+  fail_unless_equals_int(S3SINK_UPLOADER(sink)->upload_copy_part_count, 0);
   fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->downloads_requested, 0);
   fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->bytes_downloaded, 0);
 
@@ -507,6 +510,7 @@ GST_START_TEST (test_seek_to_active_part)
   // should have happened.
   gst_pad_push_event(srcpad, gst_event_new_eos());
   fail_unless_equals_int(prev_test_uploader_stats.upload_part_count, 3);
+  fail_unless_equals_int(prev_test_uploader_stats.upload_copy_part_count, 0);
   fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->downloads_requested, 0);
   fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->bytes_downloaded, 0);
 
@@ -568,6 +572,7 @@ GST_START_TEST (test_seek_to_first_part)
   prepare_to_push_bytes(srcpad, "seek_test");
   PUSH_BYTES(srcpad, buffer_size * 2 + packet_size * 3);
   fail_unless_equals_int(S3SINK_UPLOADER(sink)->upload_part_count, 2);
+  fail_unless_equals_int(S3SINK_UPLOADER(sink)->upload_copy_part_count, 0);
 
   // Seek back to beginning (32 bytes offset).  There's a partial
   // buffer present so this causes a flush (write) of that buffer
@@ -583,6 +588,7 @@ GST_START_TEST (test_seek_to_first_part)
     // 'uploader' is now trashed so check the stats it left to
     // verify it's now 3.
     fail_unless_equals_int(prev_test_uploader_stats.upload_part_count, 3);
+    fail_unless_equals_int(prev_test_uploader_stats.upload_copy_part_count, 0);
 
     // There should be 1 download and a full buffer requested.
     fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->downloads_requested, 1);
@@ -592,17 +598,20 @@ GST_START_TEST (test_seek_to_first_part)
   // Push the header change of this example, 16 bytes.
   PUSH_BYTES(srcpad, header_size);
   fail_unless_equals_int(S3SINK_UPLOADER(sink)->upload_part_count, 0);
+  fail_unless_equals_int(S3SINK_UPLOADER(sink)->upload_copy_part_count, 0);
 
   // send eos.
   // This will cause the buffer being written to be backfilled from S3 with the
   // already-written data followed by a copy-upload of the remaining data.
-  // This is 2 operations, so the upload_part_count will be 2.  We're checking
-  // the 'prev' count because the uploader has been destroyed by this operation.
+  // This is 2 operations, so the upload_part_count will be 1 and the
+  // upload_copy_part_count will be 1.  We're checking the 'prev' count because
+  // the uploader has been destroyed by this operation.
   // The downloader will indicate the 'post fill' data has also been downloaded,
   // increasing the download count to 2 and the amount pulled to be a full buffer
   // minus the header write.
   gst_pad_push_event(srcpad, gst_event_new_eos());
-  fail_unless_equals_int(prev_test_uploader_stats.upload_part_count, 2);
+  fail_unless_equals_int(prev_test_uploader_stats.upload_part_count, 1);
+  fail_unless_equals_int(prev_test_uploader_stats.upload_copy_part_count, 1);
   fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->downloads_requested, 2);
   fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->bytes_downloaded, buffer_size - header_size);
 
