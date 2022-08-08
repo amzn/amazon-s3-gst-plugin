@@ -1,4 +1,7 @@
-element_tests = ['s3sink.c']
+element_tests = [
+  's3sink.c',
+  'uploaderpartcache.cpp'
+]
 
 element_tests_includes = include_directories('.')
 
@@ -12,6 +15,7 @@ foreach test_file : element_tests
 
   env = environment()
   env.set('GST_PLUGIN_PATH_1_0', meson.build_root())
+  env.set('GST_DEBUG', 'check:TRACE,s3sink:TRACE')
   test(test_name, exe, timeout: 3 * 60, env: env)
 endforeach
 

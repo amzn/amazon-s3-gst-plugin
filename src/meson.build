@@ -6,7 +6,8 @@ gst_s3_elements_sources = [
 
 gst_s3_public_headers = [
   'gstawscredentials.h',
-  'gstawscredentials.hpp'
+  'gstawscredentials.hpp',
+  'gsts3uploaderpartcache.hpp'
 ]
 
 # Export symbols when building, import when not. This is optional on Linux
@@ -59,8 +60,7 @@ gst_s3_elements = library('gsts3elements',
   dependencies : [gst_dep, gst_base_dep, multipart_uploader_dep, credentials_dep],
   include_directories : [configinc],
   install : true,
-  install_dir : plugins_install_dir,
-  override_options : ['cpp_std=c++98', 'c_std=c99'])
+  install_dir : plugins_install_dir)
 
 s3elements_dep = declare_dependency(link_with : gst_s3_elements,
   include_directories : [include_directories('.')],
