@@ -37,7 +37,9 @@ test_uploader_destroy (GstS3Uploader * uploader)
 }
 
 static gboolean
-test_uploader_upload_part (GstS3Uploader * uploader, G_GNUC_UNUSED const gchar * buffer, G_GNUC_UNUSED gsize size)
+test_uploader_upload_part (GstS3Uploader * uploader,
+  G_GNUC_UNUSED const gchar * buffer, G_GNUC_UNUSED gsize size,
+  G_GNUC_UNUSED gchar **next, G_GNUC_UNUSED gsize *next_size)
 {
   gboolean ok = TEST_UPLOADER(uploader)->fail_upload_retry != 0;
 
@@ -65,6 +67,17 @@ test_uploader_upload_part_copy (GstS3Uploader * uploader, G_GNUC_UNUSED const gc
   return ok;
 }
 
+// This API is tied off in the non-cached testing
+static gboolean
+test_uploader_seek (
+  G_GNUC_UNUSED GstS3Uploader *uploader,
+  G_GNUC_UNUSED gsize offset,
+  G_GNUC_UNUSED gchar **buffer,
+  G_GNUC_UNUSED gsize *_size)
+{
+  return FALSE;
+}
+
 static gboolean
 test_uploader_complete (GstS3Uploader * uploader)
 {
@@ -75,6 +88,7 @@ static GstS3UploaderClass test_uploader_class = {
   test_uploader_destroy,
   test_uploader_upload_part,
   test_uploader_upload_part_copy,
+  test_uploader_seek,
   test_uploader_complete
 };
 
