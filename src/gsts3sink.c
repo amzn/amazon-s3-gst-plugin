@@ -79,6 +79,7 @@ enum
   PROP_AWS_SDK_VERIFY_SSL,
   PROP_AWS_SDK_S3_SIGN_PAYLOAD,
   PROP_AWS_SDK_REQUEST_TIMEOUT,
+  PROP_NUM_CACHE_PARTS,
   PROP_LAST
 };
 
@@ -249,6 +250,12 @@ gst_s3_sink_class_init (GstS3SinkClass * klass)
           GST_S3_UPLOADER_CONFIG_DEFAULT_PROP_AWS_SDK_REQUEST_TIMEOUT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property (gobject_class,  PROP_NUM_CACHE_PARTS,
+      g_param_spec_int ("num-cache-parts", "Number of Parts to cache in uploader",
+          "0 is no cache; [1,10000] cache first N parts, [-10000,-1] last N parts",
+          -10000, 10000, 0, /* min / max / default*/
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
   gst_element_class_set_static_metadata (gstelement_class,
       "S3 Sink",
       "Sink/S3", "Write stream to an Amazon S3 bucket",
@@ -287,6 +294,8 @@ gst_s3_sink_init (GstS3Sink * s3sink)
   s3sink->uploader = NULL;
   s3sink->downloader = NULL;
   s3sink->is_started = FALSE;
+  s3sink->buffer_from_cache = FALSE;
+  s3sink->becoming_eos = FALSE;
 
   gst_base_sink_set_sync (GST_BASE_SINK (s3sink), FALSE);
 }
@@ -408,6 +417,13 @@ gst_s3_sink_set_property (GObject * object, guint prop_id,
     case PROP_AWS_SDK_REQUEST_TIMEOUT:
       sink->config.aws_sdk_request_timeout_ms = g_value_get_int (value);
       break;
+    case PROP_NUM_CACHE_PARTS:
+      if (sink->is_started) {
+        GST_WARNING("Changing num-cache-parts property after starting the element is not supported yet.");
+      } else {
+        sink->config.cache_num_parts = g_value_get_int (value);
+      }
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -462,6 +478,9 @@ gst_s3_sink_get_property (GObject * object, guint prop_id, GValue * value,
       break;
     case PROP_AWS_SDK_REQUEST_TIMEOUT:
       g_value_set_int (value, sink->config.aws_sdk_request_timeout_ms);
+      break;
+    case PROP_NUM_CACHE_PARTS:
+      g_value_set_int (value, sink->config.cache_num_parts);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -635,7 +654,10 @@ gst_s3_sink_event (GstBaseSink * base_sink, GstEvent * event)
       //TODO: truncate to 0 bytes (is this necessary?)
       break;
     case GST_EVENT_EOS:
+      sink->becoming_eos = TRUE;
       gst_s3_sink_do_flush (sink);
+      gst_s3_uploader_complete(sink->uploader);
+      gst_s3_destroy_uploader(sink);
       break;
     default:
       break;
@@ -684,9 +706,50 @@ gst_s3_sink_flush_buffer (GstS3Sink * sink)
   gboolean ret = TRUE;
 
   if (sink->buffer_size) {
+    gboolean was_from_cache = sink->buffer_from_cache;
+    gchar *next = NULL;
+    gsize next_size = 0;
     GST_DEBUG_OBJECT(sink, "Uploading %ld byte part", sink->buffer_size);
     ret = gst_s3_uploader_upload_part (sink->uploader, sink->buffer,
-        sink->buffer_size);
+        sink->buffer_size, &next, &next_size);
+
+    sink->buffer_from_cache = FALSE;
+    if (next) {
+      if (next_size <= sink->config.buffer_size) {
+        GST_DEBUG_OBJECT(sink, "upload_part returned next cached part; copying.");
+        memcpy(sink->buffer, next, next_size);
+        sink->buffer_from_cache = TRUE;
+      }
+      else {
+        GST_DEBUG_OBJECT(sink, "upload_part resulted in cached buffer larger than allowed configured size; discarding.");
+      }
+      g_free(next);
+    }
+    else if (was_from_cache && (sink->upload_size - sink->current_pos > 0)) {
+      // 1. The most recently uploaded part was from cache
+      // 2. This most recent flush does not complete the file.
+      // ->> 'next' is therefore a potential cache miss.
+      if (sink->becoming_eos) {
+        // If going EOS then implicitly everything should have been uploaded already
+        // and this was just patching over an existing part by re-sending it.
+        gst_s3_uploader_seek(sink->uploader, sink->upload_size, &next, &next_size);
+        if (next)
+          g_free(next);
+        if (next_size > 0) {
+          // do_flush is the way we got here for this specific case, so since there
+          // is a known end to the file, "soft seek" to it so that the do_flush does
+          // not attempt to copy-upload the same data over top of itself.
+          sink->current_pos = sink->upload_size;
+        }
+      }
+      else {
+        // Otherwise, this was an attempt to continue writing "new data" over the top
+        // of old data, so a seek is required to sync things up now that we're off the
+        // end of the cache.  This only should happen if the allowed number of cached
+        // parts is > 0 (just FYI).
+        gst_s3_sink_do_seek(sink, sink->current_pos + sink->buffer_size);
+      }
+    }
     sink->buffer_pos = sink->buffer_size = 0;
   }
 
@@ -743,10 +806,13 @@ gst_s3_sink_do_flush (GstS3Sink * sink)
 
     // Set current position to end of data in current buffer
     const gsize buffer_start = sink->current_pos - sink->buffer_pos;
+    if (sink->buffer_from_cache) // potentially bad assumption about to happen
+      sink->buffer_size = sink->config.buffer_size;
     sink->buffer_pos = sink->buffer_size;
     sink->current_pos = buffer_start + sink->buffer_pos;
 
-    if (sink->buffer_size != sink->config.buffer_size &&
+    if (!sink->buffer_from_cache &&
+        sink->buffer_size != sink->config.buffer_size &&
         sink->current_pos < sink->upload_size) {
 
       const gsize bytes_to_read = MIN(sink->config.buffer_size - sink->buffer_size, sink->upload_size - sink->current_pos);
@@ -801,12 +867,8 @@ gst_s3_sink_do_flush (GstS3Sink * sink)
       }
     }
 
-    ret = gst_s3_uploader_complete (sink->uploader);
-
     sink->current_pos = sink->upload_size;
   }
-
-  gst_s3_destroy_uploader (sink);
 
   return ret;
 }
@@ -822,6 +884,23 @@ gst_s3_sink_do_seek (GstS3Sink * sink, guint64 new_offset)
 
   const gsize buffer_start = sink->current_pos - sink->buffer_pos;
   const gsize buffer_end = buffer_start + sink->config.buffer_size;
+
+  GST_TRACE_OBJECT(sink, "\n\t"
+    "s->current_pos:  %" G_GSIZE_FORMAT "\n\t"
+    "s->buffer_pos:   %" G_GSIZE_FORMAT "\n\t"
+    "s->upload_size:  %" G_GSIZE_FORMAT "\n\t"
+    "new_offset:      %" G_GUINT64_FORMAT "\n\t"
+    "buffer_start:    %" G_GSIZE_FORMAT "\n\t"
+    "buffer_end:      %" G_GSIZE_FORMAT "\n\t"
+    ,
+    sink->current_pos,
+    sink->buffer_pos,
+    sink->upload_size,
+    new_offset,
+    buffer_start,
+    buffer_end
+  );
+
   if (new_offset >= buffer_start && new_offset < buffer_end) {
       GST_TRACE_OBJECT (sink, "Seeking to offset %" G_GUINT64_FORMAT
           " which is within current buffer", new_offset);
@@ -831,46 +910,76 @@ gst_s3_sink_do_seek (GstS3Sink * sink, guint64 new_offset)
   }
   else if (sink->current_pos != sink->upload_size || new_offset < sink->current_pos) {
     gsize new_pos;
+    gchar *next = NULL;
+    gsize next_size = 0;
 
     if (!gst_s3_sink_do_flush(sink))
       goto flush_failed;
 
-    sink->uploader = GST_S3_SINK_GET_CLASS((gpointer*) sink)->uploader_new (&sink->config);
-
     new_pos = MIN(new_offset, sink->upload_size);
-    if (new_pos >= sink->config.buffer_size) {
-      gboolean res;
 
+    if (gst_s3_uploader_seek(sink->uploader, new_offset, &next, &next_size)) {
+      // todo: something in this situation.  Some notes...
+      // 1. We do not need to 'complete' or destroy the uploader since we're working
+      //    from cache.
+      // 2. The _do_flush(sink) will have called _flush_buffer, which calls _upload_part
+      //    and gets the next buffer, if found, which is the buffer after the one we just
+      //    seeked away from, in whatever direction.
+      // 3. 'next' will be a valid buffer with a non-zero size, guaranteed, and the
+      //    uploader's part counter is already changed to reflect the move to this offset.
       GST_TRACE_OBJECT (sink, "Seeking to offset %" G_GUINT64_FORMAT
-          " using multipart upload copy", new_offset);
-      res = gst_s3_uploader_upload_part_copy(
-        sink->uploader,
-        sink->config.bucket,
-        sink->config.key,
-        0,
-        new_pos - 1
-      );
+          " using local cache", new_offset);
+      if (next_size > sink->config.buffer_size)
+        goto cache_failed;
 
-      if (!res) {
-        goto upload_copy_failed;
-      }
+      memcpy(sink->buffer, next, next_size);
+      g_free(next);
 
-      sink->current_pos = new_pos;
+      // Assumption here is all preceding buffers, if they exist,
+      // are the same size as the config states.
+      sink->buffer_from_cache = TRUE;
+      sink->current_pos = new_offset;
+      sink->buffer_pos = new_offset % sink->config.buffer_size;
     }
-    else if (new_pos > 0) {
-      GST_TRACE_OBJECT (sink, "Seeking to offset %" G_GUINT64_FORMAT
-          " by downloading", new_offset);
+    else {
+      gst_s3_uploader_complete(sink->uploader);
+      gst_s3_destroy_uploader(sink);
+      sink->uploader = GST_S3_SINK_GET_CLASS((gpointer*) sink)->uploader_new (&sink->config);
 
-      const gsize bytes_read = gst_s3_downloader_download_part(
-        sink->downloader,
-        sink->buffer,
-        0,
-        new_pos);
+      if (new_pos >= sink->config.buffer_size) {
+        gboolean res;
 
-      sink->current_pos = sink->buffer_size = sink->buffer_pos = bytes_read;
+        GST_TRACE_OBJECT (sink, "Seeking to offset %" G_GUINT64_FORMAT
+            " using multipart upload copy", new_offset);
+        res = gst_s3_uploader_upload_part_copy(
+          sink->uploader,
+          sink->config.bucket,
+          sink->config.key,
+          0,
+          new_pos - 1
+        );
 
-      if (bytes_read != new_pos) {
-        GST_WARNING_OBJECT(sink, "Failed to preload %ld bytes, only read %ld", new_pos, bytes_read);
+        if (!res) {
+          goto upload_copy_failed;
+        }
+
+        sink->current_pos = new_pos;
+      }
+      else if (new_pos > 0) {
+        GST_TRACE_OBJECT (sink, "Seeking to offset %" G_GUINT64_FORMAT
+            " by downloading", new_offset);
+
+        const gsize bytes_read = gst_s3_downloader_download_part(
+          sink->downloader,
+          sink->buffer,
+          0,
+          new_pos);
+
+        sink->current_pos = sink->buffer_size = sink->buffer_pos = bytes_read;
+
+        if (bytes_read != new_pos) {
+          GST_WARNING_OBJECT(sink, "Failed to preload %ld bytes, only read %ld", new_pos, bytes_read);
+        }
       }
     }
   }
@@ -895,6 +1004,11 @@ gst_s3_sink_do_seek (GstS3Sink * sink, guint64 new_offset)
   return TRUE;
 
   /* ERRORS */
+cache_failed:
+  {
+    GST_ERROR_OBJECT (sink, "Cache-based seek failed");
+    return FALSE;
+  }
 flush_failed:
   {
     GST_ERROR_OBJECT (sink, "Flush failed");

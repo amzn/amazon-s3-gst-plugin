@@ -66,8 +66,14 @@ struct _GstS3Sink {
   gsize buffer_pos;
   // Total accumulated size of data in the buffer
   gsize buffer_size;
+  // This buffer was filled from cache
+  gboolean buffer_from_cache;
 
   gboolean is_started;
+
+  // flag for when an EOS event is being handled
+  // so that we can better understand how to flush.
+  gboolean becoming_eos;
 };
 
 struct _GstS3SinkClass {

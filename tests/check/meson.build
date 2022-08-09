@@ -1,6 +1,7 @@
 element_tests = [
   's3sink.c',
-  'uploaderpartcache.cpp'
+  'uploaderpartcache.cpp',
+  's3sink-cached.cpp'
 ]
 
 element_tests_includes = include_directories('.')
