@@ -2,14 +2,37 @@
 
 #include <gst/gst.h>
 
-static gboolean
-push_bytes(GstPad *pad, size_t num_bytes, GstFlowReturn expected_ret_code)
+GstBuffer*
+val_filled_buffer_new (size_t num_bytes, guint8 val)
+{
+  GstBuffer *buf = gst_buffer_new_and_alloc(num_bytes);
+  GstMapInfo info;
+  guint i;
+
+  if (!gst_buffer_map (buf, &info, GST_MAP_WRITE)) {
+    goto buffer_map_failed;
+  }
+
+  for (i = 0; i < num_bytes; ++i)
+    ((guint8 *)info.data)[i] = val & 0xff;
+  gst_buffer_unmap (buf, &info);
+
+out:
+  return buf;
+
+buffer_map_failed:
+  gst_buffer_unref (buf);
+  buf = NULL;
+  goto out;
+}
+
+GstBuffer*
+random_buffer_new (size_t num_bytes)
 {
   GstBuffer *buf = gst_buffer_new_and_alloc(num_bytes);
   GRand *rand = g_rand_new_with_seed (num_bytes);
   GstMapInfo info;
   guint i;
-  gboolean ret = FALSE;
 
   if (!gst_buffer_map (buf, &info, GST_MAP_WRITE)) {
     goto buffer_map_failed;
@@ -19,20 +42,33 @@ push_bytes(GstPad *pad, size_t num_bytes, GstFlowReturn expected_ret_code)
     ((guint8 *)info.data)[i] = (g_rand_int (rand) >> 24) & 0xff;
   gst_buffer_unmap (buf, &info);
 
-  ret = gst_pad_push (pad, buf) == expected_ret_code;
-  goto push_bytes_finalize;
+out:
+  g_rand_free (rand);
+  return buf;
 
 buffer_map_failed:
   gst_buffer_unref (buf);
+  buf = NULL;
+  goto out;
+}
 
-push_bytes_finalize:
-  g_rand_free (rand);
+static gboolean
+push_buffer (GstPad *pad, GstBuffer* buf, GstFlowReturn expected_ret_code)
+{
+  gboolean ret = FALSE;
+
+  if (buf) {
+    ret = gst_pad_push (pad, buf) == expected_ret_code;
+  }
 
   return ret;
 }
 
-#define PUSH_BYTES(pad, num_bytes) fail_if (!push_bytes(pad, num_bytes, GST_FLOW_OK))
-#define PUSH_BYTES_FAILURE(pad, num_bytes) fail_if (!push_bytes(pad, num_bytes, GST_FLOW_ERROR))
+#define PUSH_BYTES(pad, num_bytes) fail_if (!push_buffer (pad, random_buffer_new (num_bytes), GST_FLOW_OK))
+#define PUSH_BYTES_FAILURE(pad, num_bytes) fail_if (!push_buffer (pad, random_buffer_new (num_bytes), GST_FLOW_ERROR))
+
+#define PUSH_VAL_BYTES(pad, num_bytes, val) fail_if (!push_buffer (pad, val_filled_buffer_new (num_bytes, val), GST_FLOW_OK))
+#define PUSH_VAL_BYTES_FAILURE(pad, num_bytes, val) fail_if (!push_buffer (pad, val_filled_buffer_new (num_bytes, val), GST_FLOW_ERROR))
 
 /**
  * @brief Before pushing buffers/bytes one must send a stream start and a segment declaration
