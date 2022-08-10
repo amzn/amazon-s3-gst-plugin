@@ -8,6 +8,9 @@ aws_cpp_sdk_req = '>= 1.7.202'
 
 gst_s3_version = meson.project_version()
 
+c_args = ['-std=c17']
+cpp_args = ['-std=c++17']
+
 apiversion = '1.0'
 
 glib_dep = dependency('glib-2.0')
