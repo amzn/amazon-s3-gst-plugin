@@ -1,10 +1,10 @@
-#include <gst/check/gstcheck.h>
-
 #include "gsts3sink.h"
 
 #include "include/testcacheduploader.hpp"
 #include "include/testdownloader.h"
 #include "include/push_bytes.h"
+
+#include <gst/check/gstcheck.h>
 
 static GstStaticPadTemplate srctemplate = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
@@ -14,7 +14,7 @@ static GstStaticPadTemplate srctemplate = GST_STATIC_PAD_TEMPLATE ("src",
 static GstS3Uploader*
 s3sink_make_new_test_uploader(const GstS3UploaderConfig *config )
 {
-  TestCachedUploader *uploader = (TestCachedUploader *) test_cached_uploader_new (-1, FALSE, config->cache_num_parts);
+  TestCachedUploader *uploader = (TestCachedUploader *) test_cached_uploader_new (config, -1, FALSE);
   return (GstS3Uploader*) uploader;
 }
 
@@ -81,7 +81,9 @@ GST_START_TEST (test_head_cached)
   fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->bytes_downloaded, 0);
 
   fail_unless(prepare_to_push_bytes(srcpad, "seek_test"));
-  PUSH_BYTES(srcpad, num_packets * PACKET_SIZE);
+  for (int i = 1; i <= num_packets; i++) {
+    PUSH_VAL_BYTES(srcpad, PACKET_SIZE, i);
+  }
 
   // Should see 2 parts uploaded so far.
   fail_unless_equals_int(S3SINK_UPLOADER(sink)->upload_part_count, 2);
@@ -98,7 +100,7 @@ GST_START_TEST (test_head_cached)
   fail_unless_equals_int(S3SINK_UPLOADER(sink)->cache_misses, 0);
 
   // Write more data.
-  PUSH_BYTES(srcpad, 32);
+  PUSH_VAL_BYTES(srcpad, 32, 0xFF);
 
   // EOS
   // 1. Uploader is destroyed this time as part of EOS, so
@@ -114,10 +116,24 @@ GST_START_TEST (test_head_cached)
   fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->downloads_requested, 0);
   fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->bytes_downloaded, 0);
 
+  // Fidelity spot check:
+  std::string buffer = cached_buffer.str();
+  fail_unless_equals_int (cached_buffer.tellp(), PACKET_SIZE * num_packets);
+  fail_unless_equals_int_hex ((0xFF & buffer[15]),             0x01);
+  fail_unless_equals_int_hex ((0xFF & buffer[16]),             0xFF); // header change start
+  fail_unless_equals_int_hex ((0xFF & buffer[47]),             0xFF); // header change end
+  fail_unless_equals_int_hex ((0xFF & buffer[48]),             0x01);
+  fail_unless_equals_int_hex ((0xFF & buffer[PACKET_SIZE]),    0x02);
+  fail_unless_equals_int_hex ((0xFF & buffer[PACKET_SIZE*2]),  0x03);
+  fail_unless_equals_int_hex ((0xFF & buffer[PACKET_SIZE*3]),  0x04);
+  fail_unless_equals_int_hex ((0xFF & buffer[PACKET_SIZE*4]),  0x05);
+  fail_unless_equals_int_hex ((0xFF & buffer[PACKET_SIZE*5]),  0x06);
+
   // End.
   gst_element_set_state (sink, GST_STATE_NULL);
   gst_clear_object(&srcpad);
   gst_clear_object(&sink);
+  test_cached_uploader_reset_prev_stats();
 }
 GST_END_TEST
 
