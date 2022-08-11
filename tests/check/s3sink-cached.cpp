@@ -25,8 +25,7 @@
  */
 #include "gsts3sink.h"
 
-#include "include/testcacheduploader.hpp"
-#include "include/testdownloader.h"
+#include "include/testcachedloaders.hpp"
 #include "include/push_bytes.h"
 
 #include <gst/check/gstcheck.h>
@@ -45,12 +44,11 @@ s3sink_make_new_test_uploader(const GstS3UploaderConfig *config )
 static GstS3Downloader*
 s3sink_make_new_test_downloader( G_GNUC_UNUSED const GstS3UploaderConfig *config )
 {
-  TestDownloader *downloader = (TestDownloader *) test_downloader_new ();
-  return (GstS3Downloader*) downloader;
+  return test_cached_downloader_new (config);
 }
 
 #define S3SINK_UPLOADER(obj) ((TestCachedUploader*) GST_S3_SINK(obj)->uploader)
-#define S3SINK_DOWNLOADER(obj) ((TestDownloader*) GST_S3_SINK(obj)->downloader)
+#define S3SINK_DOWNLOADER(obj) ((TestCachedDownloader*) GST_S3_SINK(obj)->downloader)
 
 #define PACKET_SIZE         (1024*1024)
 #define PACKETS_PER_BUFFER  (5)

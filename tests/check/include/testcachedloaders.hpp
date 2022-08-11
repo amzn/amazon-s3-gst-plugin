@@ -3,6 +3,7 @@
 #include <sstream>
 #include <gst/gst.h>
 #include "gsts3uploader.h"
+#include "gsts3downloader.h"
 #include "gsts3uploaderconfig.h"
 
 #include <gsts3uploaderpartcache.hpp>
@@ -13,6 +14,8 @@ typedef struct {
     GstS3Uploader base;
 
     UploaderPartCache *cache;
+
+    gint current_part_num;
 
     gint upload_part_count;
     gint upload_copy_part_count;
@@ -34,6 +37,8 @@ static TestCachedUploaderStats prev_test_cached_uploader_stats;
 // as that causes a segfault
 std::stringstream uploaded_buffer;
 
+#define PRINT_BUFFER(b, first, last) (for (int __i = first; __i < last; __i++) GST_TRACE("offset %10ld = %4d", __i, b[__i]);)
+
 static gsize
 uploaded_buffer_size() {
   gsize current = uploaded_buffer.tellp();
@@ -43,18 +48,6 @@ uploaded_buffer_size() {
   uploaded_buffer.seekp(current, std::ios::beg);
 
   return size;
-}
-
-static void
-debug_print_uploaded_buffer(size_t first, size_t last) {
-  first = MIN(0, first);
-  last = MAX(last, uploaded_buffer_size());
-
-  std::string now = uploaded_buffer.str();
-
-  for (auto i = first; i < last; i++) {
-    GST_TRACE("uploaded buffer offset %010ld -> %d", i, now[i]);
-  }
 }
 
 #define TEST_CACHED_UPLOADER(uploader) ((TestCachedUploader*) uploader)
@@ -94,16 +87,17 @@ test_cached_uploader_upload_part (
   TestCachedUploader *inst = TEST_CACHED_UPLOADER(uploader);
 
   inst->upload_part_count++;
+  inst->current_part_num++;
 
   // add this buffer (part) to the uploaded_buffer.
   uploaded_buffer.write(buffer, size);
 
-  inst->cache->get_copy(inst->upload_part_count+1, next, next_size);
+  inst->cache->get_copy(inst->current_part_num+1, next, next_size);
   if (*next != NULL)
     inst->cache_hits++;
   else if (*next_size > 0)
     inst->cache_misses++;
-  inst->cache->insert_or_update(inst->upload_part_count, buffer, size);
+  inst->cache->insert_or_update(inst->current_part_num, buffer, size);
 
   return TRUE;
 }
@@ -126,9 +120,12 @@ test_cached_uploader_seek (GstS3Uploader *uploader, gsize offset, gchar **buffer
     if (*buffer != NULL) {
       inst->cache_hits++;
 
+      // -1 to mimic what the MPU does since it increments first on upload_part
+      inst->current_part_num = part - 1;
+
       // the seek is relative to the part
       // assuming all parts are the same size
-      gsize boffset = (part-1) * inst->buffer_size;
+      gsize boffset = inst->current_part_num * inst->buffer_size;
       uploaded_buffer.seekp (boffset, std::ios::beg);
       return TRUE;
     }
@@ -143,7 +140,7 @@ test_cached_uploader_seek (GstS3Uploader *uploader, gsize offset, gchar **buffer
 }
 
 static gboolean
-test_cached_uploader_complete (GstS3Uploader * uploader)
+test_cached_uploader_complete (G_GNUC_UNUSED GstS3Uploader * uploader)
 {
   return TRUE;
 }
@@ -168,7 +165,62 @@ test_cached_uploader_new (
   uploader->cache_hits = 0;
   uploader->cache_misses = 0;
   uploader->buffer_size = config->buffer_size;
+  uploader->current_part_num = 0;
   uploader->cache = new UploaderPartCache(config->cache_num_parts);
 
   return (GstS3Uploader*) uploader;
+}
+
+typedef struct {
+  GstS3Downloader base;
+    gsize buffer_size;
+
+  size_t bytes_downloaded;
+  gint downloads_requested;
+} TestCachedDownloader;
+
+#define TEST_DOWNLOADER(downloader) ((TestCachedDownloader*) downloader)
+
+// Simply returns that the amount requested was actually returned.
+static size_t
+test_cached_downloader_download_part (
+  GstS3Downloader *downloader,
+  char *buffer,
+  size_t first,
+  size_t last)
+{
+  auto inst = TEST_DOWNLOADER(downloader);
+  size_t requested = last - first;
+
+  inst->bytes_downloaded += requested;
+  inst->downloads_requested++;
+
+  if (requested > 0) {
+    uploaded_buffer.seekg(first, std::ios::beg);
+    uploaded_buffer.read(buffer, requested);
+  }
+
+  return requested;
+}
+
+static void
+test_cached_downloader_destroy (GstS3Downloader *downloader)
+{
+  g_free(downloader);
+}
+
+static GstS3DownloaderClass test_cached_downloader_class = {
+  test_cached_downloader_destroy,
+  test_cached_downloader_download_part
+};
+
+static GstS3Downloader *
+test_cached_downloader_new (const GstS3UploaderConfig *config)
+{
+  TestCachedDownloader *downloader = g_new (TestCachedDownloader, 1);
+  downloader->base.klass = &test_cached_downloader_class;
+  downloader->buffer_size = config->buffer_size;
+  downloader->bytes_downloaded = 0;
+  downloader->downloads_requested = 0;
+  return (GstS3Downloader*) downloader;
 }
