@@ -8,16 +8,11 @@
 #include <gsts3uploaderpartcache.hpp>
 
 using gst::aws::s3::UploaderPartCache;
-using std::stringstream;
 
 typedef struct {
     GstS3Uploader base;
-    gint fail_upload_retry;
-    gboolean fail_complete;
 
     UploaderPartCache *cache;
-
-    gint permitted_cache_hits;
 
     gint upload_part_count;
     gint upload_copy_part_count;
@@ -37,7 +32,30 @@ static TestCachedUploaderStats prev_test_cached_uploader_stats;
 
 // cannot put this by value in our glib-created TestCachedUploader
 // as that causes a segfault
-std::stringstream cached_buffer;
+std::stringstream uploaded_buffer;
+
+static gsize
+uploaded_buffer_size() {
+  gsize current = uploaded_buffer.tellp();
+
+  uploaded_buffer.seekp(0, std::ios::end);
+  gsize size = uploaded_buffer.tellp();
+  uploaded_buffer.seekp(current, std::ios::beg);
+
+  return size;
+}
+
+static void
+debug_print_uploaded_buffer(size_t first, size_t last) {
+  first = MIN(0, first);
+  last = MAX(last, uploaded_buffer_size());
+
+  std::string now = uploaded_buffer.str();
+
+  for (auto i = first; i < last; i++) {
+    GST_TRACE("uploaded buffer offset %010ld -> %d", i, now[i]);
+  }
+}
 
 #define TEST_CACHED_UPLOADER(uploader) ((TestCachedUploader*) uploader)
 
@@ -48,7 +66,7 @@ test_cached_uploader_reset_prev_stats()
   prev_test_cached_uploader_stats.upload_copy_part_count = 0;
   prev_test_cached_uploader_stats.cache_hits = 0;
   prev_test_cached_uploader_stats.cache_misses = 0;
-  cached_buffer.clear();
+  uploaded_buffer.clear();
 }
 
 static void
@@ -74,16 +92,11 @@ test_cached_uploader_upload_part (
   gsize *next_size)
 {
   TestCachedUploader *inst = TEST_CACHED_UPLOADER(uploader);
-  gboolean ok = inst->fail_upload_retry != 0;
 
   inst->upload_part_count++;
 
-  if (ok) {
-    inst->fail_upload_retry--;
-
-    // add this buffer to the cache.
-    cached_buffer.write(buffer, size);
-  }
+  // add this buffer (part) to the uploaded_buffer.
+  uploaded_buffer.write(buffer, size);
 
   inst->cache->get_copy(inst->upload_part_count+1, next, next_size);
   if (*next != NULL)
@@ -92,22 +105,15 @@ test_cached_uploader_upload_part (
     inst->cache_misses++;
   inst->cache->insert_or_update(inst->upload_part_count, buffer, size);
 
-  return ok;
+  return TRUE;
 }
 
 static gboolean
 test_cached_uploader_upload_part_copy (GstS3Uploader * uploader, G_GNUC_UNUSED const gchar * bucket,
   G_GNUC_UNUSED const gchar * key, G_GNUC_UNUSED gsize first, G_GNUC_UNUSED gsize last)
 {
-  gboolean ok = TEST_CACHED_UPLOADER(uploader)->fail_upload_retry != 0;
-
   TEST_CACHED_UPLOADER(uploader)->upload_copy_part_count++;
-
-  if (ok) {
-    TEST_CACHED_UPLOADER(uploader)->fail_upload_retry--;
-  }
-
-  return ok;
+  return TRUE;
 }
 
 static gboolean
@@ -123,7 +129,7 @@ test_cached_uploader_seek (GstS3Uploader *uploader, gsize offset, gchar **buffer
       // the seek is relative to the part
       // assuming all parts are the same size
       gsize boffset = (part-1) * inst->buffer_size;
-      cached_buffer.seekp (boffset, std::ios::beg);
+      uploaded_buffer.seekp (boffset, std::ios::beg);
       return TRUE;
     }
     else {
@@ -139,9 +145,7 @@ test_cached_uploader_seek (GstS3Uploader *uploader, gsize offset, gchar **buffer
 static gboolean
 test_cached_uploader_complete (GstS3Uploader * uploader)
 {
-  cached_buffer.seekp(0, std::ios::end);
-  cached_buffer.flush();
-  return !TEST_CACHED_UPLOADER(uploader)->fail_complete;
+  return TRUE;
 }
 
 static GstS3UploaderClass test_cached_uploader_class = {
@@ -154,15 +158,11 @@ static GstS3UploaderClass test_cached_uploader_class = {
 
 static GstS3Uploader*
 test_cached_uploader_new (
-  const GstS3UploaderConfig *config,
-  gint fail_upload_retry=-1,
-  gboolean fail_complete=FALSE)
+  const GstS3UploaderConfig *config)
 {
   TestCachedUploader *uploader = g_new(TestCachedUploader, 1);
 
   uploader->base.klass = &test_cached_uploader_class;
-  uploader->fail_upload_retry = fail_upload_retry;
-  uploader->fail_complete = fail_complete;
   uploader->upload_part_count = 0;
   uploader->upload_copy_part_count = 0;
   uploader->cache_hits = 0;

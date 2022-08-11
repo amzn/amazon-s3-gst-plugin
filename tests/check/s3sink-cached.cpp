@@ -1,3 +1,28 @@
+/* amazon-s3-gst-plugin
+ * Copyright (C) 2019 Amazon <mkolny@amazon.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Library General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Library General Public License for more details.
+ *
+ * You should have received a copy of the GNU Library General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
+ */
+
+/**
+ * The focus of these tests are on the caching mechanism (head, tail)
+ * and the resulting fidelity of the uploaded buffer as the s3sink
+ * and its multipart uploader try to make use of locally-cached
+ * copies of previously-uploaded parts.
+ */
 #include "gsts3sink.h"
 
 #include "include/testcacheduploader.hpp"
@@ -14,8 +39,7 @@ static GstStaticPadTemplate srctemplate = GST_STATIC_PAD_TEMPLATE ("src",
 static GstS3Uploader*
 s3sink_make_new_test_uploader(const GstS3UploaderConfig *config )
 {
-  TestCachedUploader *uploader = (TestCachedUploader *) test_cached_uploader_new (config, -1, FALSE);
-  return (GstS3Uploader*) uploader;
+  return test_cached_uploader_new (config);
 }
 
 static GstS3Downloader*
@@ -117,8 +141,8 @@ GST_START_TEST (test_head_cached)
   fail_unless_equals_int(S3SINK_DOWNLOADER(sink)->bytes_downloaded, 0);
 
   // Fidelity spot check:
-  std::string buffer = cached_buffer.str();
-  fail_unless_equals_int (cached_buffer.tellp(), PACKET_SIZE * num_packets);
+  std::string buffer = uploaded_buffer.str();
+  fail_unless_equals_int (buffer.size(), PACKET_SIZE * num_packets);
   fail_unless_equals_int_hex ((0xFF & buffer[15]),             0x01);
   fail_unless_equals_int_hex ((0xFF & buffer[16]),             0xFF); // header change start
   fail_unless_equals_int_hex ((0xFF & buffer[47]),             0xFF); // header change end
