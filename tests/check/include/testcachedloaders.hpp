@@ -34,21 +34,13 @@ typedef struct {
 static TestCachedUploaderStats prev_test_cached_uploader_stats;
 
 // cannot put this by value in our glib-created TestCachedUploader
-// as that causes a segfault
-std::stringstream uploaded_buffer;
+// as that causes a segfault.
+// 'uploader_buffer' -> The uploader's parts pushed to S3 already but not finalized via complete()
+// 'uploaded_buffer' -> The result of an uploader complete()
+std::string uploaded_buffer;
+std::stringstream uploader_buffer;
 
 #define PRINT_BUFFER(b, first, last) (for (int __i = first; __i < last; __i++) GST_TRACE("offset %10ld = %4d", __i, b[__i]);)
-
-static gsize
-uploaded_buffer_size() {
-  gsize current = uploaded_buffer.tellp();
-
-  uploaded_buffer.seekp(0, std::ios::end);
-  gsize size = uploaded_buffer.tellp();
-  uploaded_buffer.seekp(current, std::ios::beg);
-
-  return size;
-}
 
 #define TEST_CACHED_UPLOADER(uploader) ((TestCachedUploader*) uploader)
 
@@ -60,6 +52,7 @@ test_cached_uploader_reset_prev_stats()
   prev_test_cached_uploader_stats.cache_hits = 0;
   prev_test_cached_uploader_stats.cache_misses = 0;
   uploaded_buffer.clear();
+  uploader_buffer.clear();
 }
 
 static void
@@ -90,7 +83,7 @@ test_cached_uploader_upload_part (
   inst->current_part_num++;
 
   // add this buffer (part) to the uploaded_buffer.
-  uploaded_buffer.write(buffer, size);
+  uploader_buffer.write(buffer, size);
 
   inst->cache->get_copy(inst->current_part_num+1, next, next_size);
   if (*next != NULL)
@@ -126,7 +119,7 @@ test_cached_uploader_seek (GstS3Uploader *uploader, gsize offset, gchar **buffer
       // the seek is relative to the part
       // assuming all parts are the same size
       gsize boffset = inst->current_part_num * inst->buffer_size;
-      uploaded_buffer.seekp (boffset, std::ios::beg);
+      uploader_buffer.seekp (boffset, std::ios::beg);
       return TRUE;
     }
     else {
@@ -142,6 +135,8 @@ test_cached_uploader_seek (GstS3Uploader *uploader, gsize offset, gchar **buffer
 static gboolean
 test_cached_uploader_complete (G_GNUC_UNUSED GstS3Uploader * uploader)
 {
+  uploaded_buffer = uploader_buffer.str();
+  uploader_buffer.clear();
   return TRUE;
 }
 
@@ -196,8 +191,7 @@ test_cached_downloader_download_part (
   inst->downloads_requested++;
 
   if (requested > 0) {
-    uploaded_buffer.seekg(first, std::ios::beg);
-    uploaded_buffer.read(buffer, requested);
+    uploaded_buffer.copy(buffer, requested, first);
   }
 
   return requested;

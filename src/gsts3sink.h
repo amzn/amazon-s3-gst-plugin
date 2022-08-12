@@ -74,6 +74,13 @@ struct _GstS3Sink {
   // flag for when an EOS event is being handled
   // so that we can better understand how to flush.
   gboolean becoming_eos;
+
+  // flag for tracking if the uploader needs to be
+  // completed, destroyed, and re-created from the
+  // s3 reference version for some reason prior to
+  // doing any download/copy-upload -like operations
+  // that would require the uploader to 'complete'
+  gboolean uploader_needs_complete;
 };
 
 struct _GstS3SinkClass {

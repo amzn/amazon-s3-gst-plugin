@@ -296,6 +296,7 @@ gst_s3_sink_init (GstS3Sink * s3sink)
   s3sink->is_started = FALSE;
   s3sink->buffer_from_cache = FALSE;
   s3sink->becoming_eos = FALSE;
+  s3sink->uploader_needs_complete = FALSE;
 
   gst_base_sink_set_sync (GST_BASE_SINK (s3sink), FALSE);
 }
@@ -725,30 +726,10 @@ gst_s3_sink_flush_buffer (GstS3Sink * sink)
       }
       g_free(next);
     }
-    else if (was_from_cache && (sink->upload_size - sink->current_pos > 0)) {
-      // 1. The most recently uploaded part was from cache
-      // 2. This most recent flush does not complete the file.
-      // ->> 'next' is therefore a potential cache miss.
-      if (sink->becoming_eos) {
-        // If going EOS then implicitly everything should have been uploaded already
-        // and this was just patching over an existing part by re-sending it.
-        gst_s3_uploader_seek(sink->uploader, sink->upload_size, &next, &next_size);
-        if (next)
-          g_free(next);
-        if (next_size > 0) {
-          // do_flush is the way we got here for this specific case, so since there
-          // is a known end to the file, "soft seek" to it so that the do_flush does
-          // not attempt to copy-upload the same data over top of itself.
-          sink->current_pos = sink->upload_size;
-        }
-      }
-      else {
-        // Otherwise, this was an attempt to continue writing "new data" over the top
-        // of old data, so a seek is required to sync things up now that we're off the
-        // end of the cache.  This only should happen if the allowed number of cached
-        // parts is > 0 (just FYI).
-        gst_s3_sink_do_seek(sink, sink->current_pos + sink->buffer_size);
-      }
+    else if (was_from_cache && !sink->becoming_eos) {
+      // Any future operation where a download or copy-upload need to take place will require
+      // re-syncing the uploader and local state FIRST.
+      sink->uploader_needs_complete = TRUE;
     }
     sink->buffer_pos = sink->buffer_size = 0;
   }
@@ -811,13 +792,30 @@ gst_s3_sink_do_flush (GstS3Sink * sink)
     sink->buffer_pos = sink->buffer_size;
     sink->current_pos = buffer_start + sink->buffer_pos;
 
+    if (sink->uploader_needs_complete) {
+      GST_DEBUG_OBJECT(sink, "uploader needs completion; doing that then copy-upload to buffer start");
+      gst_s3_uploader_complete(sink->uploader);
+      gst_s3_destroy_uploader(sink);
+      sink->uploader = GST_S3_SINK_GET_CLASS((gpointer*) sink)->uploader_new (&sink->config);
+      sink->uploader_needs_complete = FALSE;
+
+      // copy-upload from 0->buffer_start - 1
+      gst_s3_uploader_upload_part_copy(
+        sink->uploader,
+        sink->config.bucket,
+        sink->config.key,
+        0,
+        buffer_start - 1
+      );
+    }
+
     if (!sink->buffer_from_cache &&
         sink->buffer_size != sink->config.buffer_size &&
-        sink->current_pos < sink->upload_size) {
-
+        sink->current_pos < sink->upload_size)
+    {
       const gsize bytes_to_read = MIN(sink->config.buffer_size - sink->buffer_size, sink->upload_size - sink->current_pos);
       GST_TRACE_OBJECT(sink, "Post-filling %ld bytes, range: %ld-%ld", bytes_to_read, sink->current_pos,
-      sink->current_pos + bytes_to_read);
+        sink->current_pos + bytes_to_read);
 
       const gsize bytes_read = gst_s3_downloader_download_part(
         sink->downloader,
@@ -838,7 +836,21 @@ gst_s3_sink_do_flush (GstS3Sink * sink)
 
     bytes_remaining = sink->upload_size - sink->current_pos;
     if (bytes_remaining) {
-      if (bytes_remaining < sink->config.buffer_size) {
+      // The following strictly happens at EOS/stop to push "the rest of the file", which depending on our situation
+      // may or may not be necessary.  We use the uploader to figure out the most efficient path.
+      char *next = NULL;
+      gsize next_size = 0;
+
+      gst_s3_uploader_seek(sink->uploader, sink->upload_size - 1, &next, &next_size);
+      if (next)
+        g_free(next);
+      if (next_size > 0) {
+        // do_flush is the way we got here for this specific case, so since there
+        // is a known end to the file, "soft seek" to it so that the do_flush does
+        // not attempt to copy-upload the same data over top of itself.
+        GST_TRACE_OBJECT(sink, "Remaining file is known to uploader; soft-seek to EOF");
+      }
+      else if (bytes_remaining < sink->config.buffer_size) {
         GST_TRACE_OBJECT(sink, "Re-uploading remaining file from %ld to %ld", sink->current_pos, sink->upload_size);
         const gsize bytes_read = gst_s3_downloader_download_part(
           sink->downloader,
@@ -885,22 +897,6 @@ gst_s3_sink_do_seek (GstS3Sink * sink, guint64 new_offset)
   const gsize buffer_start = sink->current_pos - sink->buffer_pos;
   const gsize buffer_end = buffer_start + sink->config.buffer_size;
 
-  GST_TRACE_OBJECT(sink, "\n\t"
-    "s->current_pos:  %" G_GSIZE_FORMAT "\n\t"
-    "s->buffer_pos:   %" G_GSIZE_FORMAT "\n\t"
-    "s->upload_size:  %" G_GSIZE_FORMAT "\n\t"
-    "new_offset:      %" G_GUINT64_FORMAT "\n\t"
-    "buffer_start:    %" G_GSIZE_FORMAT "\n\t"
-    "buffer_end:      %" G_GSIZE_FORMAT "\n\t"
-    ,
-    sink->current_pos,
-    sink->buffer_pos,
-    sink->upload_size,
-    new_offset,
-    buffer_start,
-    buffer_end
-  );
-
   if (new_offset >= buffer_start && new_offset < buffer_end) {
       GST_TRACE_OBJECT (sink, "Seeking to offset %" G_GUINT64_FORMAT
           " which is within current buffer", new_offset);
@@ -945,6 +941,7 @@ gst_s3_sink_do_seek (GstS3Sink * sink, guint64 new_offset)
       gst_s3_uploader_complete(sink->uploader);
       gst_s3_destroy_uploader(sink);
       sink->uploader = GST_S3_SINK_GET_CLASS((gpointer*) sink)->uploader_new (&sink->config);
+      sink->uploader_needs_complete = FALSE;
 
       if (new_pos >= sink->config.buffer_size) {
         gboolean res;
