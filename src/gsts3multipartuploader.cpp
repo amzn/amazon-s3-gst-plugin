@@ -113,6 +113,11 @@ public:
         std::lock_guard<std::mutex> l(_mtx);
 
         int num = state.get_part_number();
+
+        // If previously uploaded, remove the old one.
+        if (_parts_completed.find(num) != _parts_completed.end())
+            _parts_completed.erase(num);
+
         _insert(_parts_in_flight, num, std::move(state));
     }
 
