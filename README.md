@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/amzn/amazon-s3-gst-plugin.svg?branch=master)](https://travis-ci.org/amzn/amazon-s3-gst-plugin)
+![Build Status](https://github.com/amzn/amazon-s3-gst-plugin/actions/workflows/c-cpp.yml/badge.svg)
 
 ## Amazon S3 Gst Plugin
 
