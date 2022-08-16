@@ -168,98 +168,98 @@ gst_s3_sink_class_init (GstS3SinkClass * klass)
   klass->uploader_new = gst_s3_multipart_uploader_new;
 
   g_object_class_install_property (gobject_class, PROP_BUCKET,
-      g_param_spec_string ("bucket", "S3 bucket",
-          "The bucket of the file to write (ignored when 'location' is set)", NULL,
-          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+    g_param_spec_string ("bucket", "S3 bucket",
+      "The bucket of the file to write (ignored when 'location' is set)", NULL,
+      G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_KEY,
-      g_param_spec_string ("key", "S3 key",
-          "The key of the file to write (ignored when 'location' is set)", NULL,
-          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+    g_param_spec_string ("key", "S3 key",
+      "The key of the file to write (ignored when 'location' is set)", NULL,
+      G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_LOCATION,
-      g_param_spec_string ("location", "S3 URI",
-          "The URI of the file to write", NULL,
-          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+    g_param_spec_string ("location", "S3 URI",
+      "The URI of the file to write", NULL,
+      G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_ACL,
-      g_param_spec_string ("acl", "S3 object acl",
-          "The canned acl for s3 object to upload", NULL,
-          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+    g_param_spec_string ("acl", "S3 object acl",
+      "The canned acl for s3 object to upload", NULL,
+      G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_CONTENT_TYPE,
-      g_param_spec_string ("content-type", "Content type",
-          "The content type of a stream", NULL,
-          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+    g_param_spec_string ("content-type", "Content type",
+      "The content type of a stream", NULL,
+      G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_CA_FILE,
-      g_param_spec_string ("ca-file", "CA file",
-          "A path to a CA file", NULL,
-          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+    g_param_spec_string ("ca-file", "CA file",
+      "A path to a CA file", NULL,
+      G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_REGION,
-      g_param_spec_string ("region", "AWS Region",
-          "An AWS region (e.g. eu-west-2). Leave empty for region-autodetection "
-          "(Please note region-autodetection requires an extra network call)", NULL,
-          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+    g_param_spec_string ("region", "AWS Region",
+      "An AWS region (e.g. eu-west-2). Leave empty for region-autodetection "
+      "(Please note region-autodetection requires an extra network call)", NULL,
+      G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_BUFFER_SIZE,
-      g_param_spec_uint ("buffer-size", "Buffering size",
-          "Size of buffer in number of bytes", MIN_BUFFER_SIZE,
-          G_MAXUINT, DEFAULT_BUFFER_SIZE,
-          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+    g_param_spec_uint ("buffer-size", "Buffering size",
+      "Size of buffer in number of bytes", MIN_BUFFER_SIZE,
+      G_MAXUINT, DEFAULT_BUFFER_SIZE,
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_INIT_AWS_SDK,
-      g_param_spec_boolean ("init-aws-sdk", "Init AWS SDK",
-          "Whether to initialize AWS SDK",
-          GST_S3_UPLOADER_CONFIG_DEFAULT_INIT_AWS_SDK,
-          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+    g_param_spec_boolean ("init-aws-sdk", "Init AWS SDK",
+      "Whether to initialize AWS SDK",
+      GST_S3_UPLOADER_CONFIG_DEFAULT_INIT_AWS_SDK,
+      G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_CREDENTIALS,
-      g_param_spec_boxed ("aws-credentials", "AWS credentials",
-          "The AWS credentials to use", GST_TYPE_AWS_CREDENTIALS,
-          G_PARAM_WRITABLE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+    g_param_spec_boxed ("aws-credentials", "AWS credentials",
+      "The AWS credentials to use", GST_TYPE_AWS_CREDENTIALS,
+      G_PARAM_WRITABLE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_AWS_SDK_ENDPOINT,
-      g_param_spec_string ("aws-sdk-endpoint", "AWS SDK Endpoint",
-          "AWS SDK endpoint override (ip:port)", NULL,
-          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+    g_param_spec_string ("aws-sdk-endpoint", "AWS SDK Endpoint",
+      "AWS SDK endpoint override (ip:port)", NULL,
+      G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_AWS_SDK_USE_HTTP,
-      g_param_spec_boolean ("aws-sdk-use-http", "AWS SDK Use HTTP",
-          "Whether to enable http for the AWS SDK (default https)",
-          GST_S3_UPLOADER_CONFIG_DEFAULT_PROP_AWS_SDK_USE_HTTP,
-          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+    g_param_spec_boolean ("aws-sdk-use-http", "AWS SDK Use HTTP",
+      "Whether to enable http for the AWS SDK (default https)",
+      GST_S3_UPLOADER_CONFIG_DEFAULT_PROP_AWS_SDK_USE_HTTP,
+      G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_AWS_SDK_VERIFY_SSL,
-      g_param_spec_boolean ("aws-sdk-verify-ssl", "AWS SDK Verify SSL",
-          "Whether to enable/disable tls validation for the AWS SDK",
-          GST_S3_UPLOADER_CONFIG_DEFAULT_PROP_AWS_SDK_VERIFY_SSL,
-          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+    g_param_spec_boolean ("aws-sdk-verify-ssl", "AWS SDK Verify SSL",
+      "Whether to enable/disable tls validation for the AWS SDK",
+      GST_S3_UPLOADER_CONFIG_DEFAULT_PROP_AWS_SDK_VERIFY_SSL,
+      G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_AWS_SDK_S3_SIGN_PAYLOAD,
-      g_param_spec_boolean ("aws-sdk-s3-sign-payload", "AWS SDK S3 Sign Payload",
-          "Whether to have the AWS SDK S3 client sign payloads using the Auth v4 Signer",
-          GST_S3_UPLOADER_CONFIG_DEFAULT_PROP_AWS_SDK_S3_SIGN_PAYLOAD,
-          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+    g_param_spec_boolean ("aws-sdk-s3-sign-payload", "AWS SDK S3 Sign Payload",
+      "Whether to have the AWS SDK S3 client sign payloads using the Auth v4 Signer",
+      GST_S3_UPLOADER_CONFIG_DEFAULT_PROP_AWS_SDK_S3_SIGN_PAYLOAD,
+      G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class,  PROP_AWS_SDK_REQUEST_TIMEOUT,
-      g_param_spec_int ("aws-sdk-request-timeout", "AWS SDK Request Timeout (milliseconds)",
-          "The request timeout to be used on the uploader and downloader; -1 is ignored",
-          GST_S3_UPLOADER_CONFIG_DEFAULT_PROP_AWS_SDK_REQUEST_TIMEOUT, G_MAXINT32, /* min / max */
-          GST_S3_UPLOADER_CONFIG_DEFAULT_PROP_AWS_SDK_REQUEST_TIMEOUT,
-          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+    g_param_spec_int ("aws-sdk-request-timeout", "AWS SDK Request Timeout (milliseconds)",
+      "The request timeout to be used on the uploader and downloader; -1 is ignored",
+      GST_S3_UPLOADER_CONFIG_DEFAULT_PROP_AWS_SDK_REQUEST_TIMEOUT, G_MAXINT32, /* min / max */
+      GST_S3_UPLOADER_CONFIG_DEFAULT_PROP_AWS_SDK_REQUEST_TIMEOUT,
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class,  PROP_NUM_CACHE_PARTS,
-      g_param_spec_int ("num-cache-parts", "Number of Parts to cache in uploader",
-          "0 is no cache; [1,10000] cache first N parts, [-10000,-1] last N parts",
-          -10000, 10000, 0, /* min / max / default*/
-          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+    g_param_spec_int ("num-cache-parts", "Number of Parts to cache in uploader",
+      "0 is no cache; [1,10000] cache first N parts, [-10000,-1] last N parts",
+      -10000, 10000, 0, /* min / max / default*/
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   gst_element_class_set_static_metadata (gstelement_class,
-      "S3 Sink",
-      "Sink/S3", "Write stream to an Amazon S3 bucket",
-      "Marcin Kolny <marcin.kolny at gmail.com>");
+    "S3 Sink",
+    "Sink/S3", "Write stream to an Amazon S3 bucket",
+    "Marcin Kolny <marcin.kolny at gmail.com>");
   gst_element_class_add_static_pad_template (gstelement_class, &sinktemplate);
 
   gstbasesink_class->start = GST_DEBUG_FUNCPTR (gst_s3_sink_start);
@@ -336,7 +336,7 @@ gst_s3_sink_set_string_property (GstS3Sink * sink, const gchar * value,
 {
   if (sink->is_started) {
     GST_WARNING ("Changing the `%s' property on s3sink "
-        "when streaming has started is not supported.", property_name);
+      "when streaming has started is not supported.", property_name);
     return;
   }
 
@@ -359,37 +359,37 @@ gst_s3_sink_set_property (GObject * object, guint prop_id,
   switch (prop_id) {
     case PROP_BUCKET:
       gst_s3_sink_set_string_property (sink, g_value_get_string (value),
-          &sink->config.bucket, "bucket");
+        &sink->config.bucket, "bucket");
       break;
     case PROP_KEY:
       gst_s3_sink_set_string_property (sink, g_value_get_string (value),
-          &sink->config.key, "key");
+        &sink->config.key, "key");
       break;
     case PROP_LOCATION:
       gst_s3_sink_set_string_property (sink, g_value_get_string (value),
-          &sink->config.location, "location");
+        &sink->config.location, "location");
       break;
     case PROP_ACL:
       gst_s3_sink_set_string_property (sink, g_value_get_string (value),
-          &sink->config.acl, "acl");
+        &sink->config.acl, "acl");
       break;
     case PROP_CONTENT_TYPE:
       gst_s3_sink_set_string_property (sink, g_value_get_string (value),
-          &sink->config.content_type, "content-type");
+        &sink->config.content_type, "content-type");
       break;
     case PROP_CA_FILE:
       gst_s3_sink_set_string_property (sink, g_value_get_string (value),
-          &sink->config.ca_file, "ca-file");
+        &sink->config.ca_file, "ca-file");
       break;
     case PROP_REGION:
       gst_s3_sink_set_string_property (sink, g_value_get_string (value),
-          &sink->config.region, "region");
+        &sink->config.region, "region");
       break;
     case PROP_BUFFER_SIZE:
       if (sink->is_started) {
         // TODO: this could be supported in the future
         GST_WARNING
-            ("Changing buffer-size property after starting the element is not supported yet.");
+          ("Changing buffer-size property after starting the element is not supported yet.");
       } else {
         sink->config.buffer_size = g_value_get_uint (value);
       }
@@ -404,7 +404,7 @@ gst_s3_sink_set_property (GObject * object, guint prop_id,
       break;
     case PROP_AWS_SDK_ENDPOINT:
       gst_s3_sink_set_string_property (sink, g_value_get_string (value),
-          &sink->config.aws_sdk_endpoint, "aws-sdk-endpoint");
+        &sink->config.aws_sdk_endpoint, "aws-sdk-endpoint");
       break;
     case PROP_AWS_SDK_USE_HTTP:
       sink->config.aws_sdk_use_http = g_value_get_boolean (value);
@@ -433,7 +433,7 @@ gst_s3_sink_set_property (GObject * object, guint prop_id,
 
 static void
 gst_s3_sink_get_property (GObject * object, guint prop_id, GValue * value,
-    GParamSpec * pspec)
+  GParamSpec * pspec)
 {
   GstS3Sink *sink = GST_S3_SINK (object);
 
@@ -541,7 +541,7 @@ gst_s3_sink_start (GstBaseSink * basesink)
 no_destination:
   {
     GST_ELEMENT_ERROR (sink, RESOURCE, NOT_FOUND,
-        ("No bucket or key specified for writing."), (NULL));
+      ("No bucket or key specified for writing."), (NULL));
     return FALSE;
   }
 
@@ -550,7 +550,7 @@ init_failed:
     gst_s3_destroy_uploader (sink);
     gst_s3_destroy_downloader (sink);
     GST_ELEMENT_ERROR (sink, RESOURCE, OPEN_WRITE,
-        ("Unable to initialize S3 uploader."), (NULL));
+      ("Unable to initialize S3 uploader."), (NULL));
     return FALSE;
   }
 }
@@ -596,7 +596,7 @@ gst_s3_sink_query (GstBaseSink * base_sink, GstQuery * query)
         case GST_FORMAT_DEFAULT:
         case GST_FORMAT_BYTES:
           gst_query_set_position (query, GST_FORMAT_BYTES,
-              sink->current_pos);
+            sink->current_pos);
           ret = TRUE;
           break;
         default:
@@ -646,8 +646,8 @@ gst_s3_sink_event (GstBaseSink * base_sink, GstEvent * event)
         }
       } else {
         GST_WARNING_OBJECT (sink,
-            "Ignored SEGMENT event of format %u (%s)", (guint) segment->format,
-            gst_format_get_name (segment->format));
+          "Ignored SEGMENT event of format %u (%s)", (guint) segment->format,
+          gst_format_get_name (segment->format));
       }
       break;
     }
@@ -669,8 +669,8 @@ gst_s3_sink_event (GstBaseSink * base_sink, GstEvent * event)
   seek_failed:
     {
       GST_ELEMENT_ERROR (sink, RESOURCE, SEEK,
-          (("Error while seeking S3 Upload \"%s/%s\"."), sink->config.bucket, sink->config.key),
-          GST_ERROR_SYSTEM);
+        (("Error while seeking S3 Upload \"%s/%s\"."), sink->config.bucket, sink->config.key),
+        GST_ERROR_SYSTEM);
       gst_event_unref (event);
       return FALSE;
     }
@@ -712,7 +712,7 @@ gst_s3_sink_flush_buffer (GstS3Sink * sink)
     gsize next_size = 0;
     GST_DEBUG_OBJECT(sink, "Uploading %ld byte part", sink->buffer_size);
     ret = gst_s3_uploader_upload_part (sink->uploader, sink->buffer,
-        sink->buffer_size, &next, &next_size);
+      sink->buffer_size, &next, &next_size);
 
     sink->buffer_from_cache = FALSE;
     if (next) {
@@ -749,10 +749,10 @@ gst_s3_sink_fill_buffer (GstS3Sink * sink, GstBuffer * buffer)
 
   do {
     bytes_to_copy =
-        MIN (sink->config.buffer_size - sink->buffer_pos,
-        map_info.size - ptr);
+      MIN (sink->config.buffer_size - sink->buffer_pos,
+      map_info.size - ptr);
     memcpy (sink->buffer + sink->buffer_pos, map_info.data + ptr,
-        bytes_to_copy);
+      bytes_to_copy);
     sink->buffer_pos += bytes_to_copy;
     sink->buffer_size = MAX(sink->buffer_pos, sink->buffer_size);
     if (sink->buffer_pos == sink->config.buffer_size) {
@@ -771,7 +771,7 @@ gst_s3_sink_fill_buffer (GstS3Sink * sink, GstBuffer * buffer)
 map_failed:
   {
     GST_ELEMENT_ERROR (sink, RESOURCE, NOT_FOUND,
-        ("Failed to map the buffer."), (NULL));
+      ("Failed to map the buffer."), (NULL));
     return FALSE;
   }
 }
@@ -891,8 +891,8 @@ gst_s3_sink_do_seek (GstS3Sink * sink, guint64 new_offset)
   gsize bytes_to_zero;
 
   GST_DEBUG_OBJECT(sink, "Seeking to new offset %" G_GUINT64_FORMAT " from %"
-      G_GUINT64_FORMAT " of %" G_GUINT64_FORMAT " total bytes", new_offset,
-      sink->current_pos, sink->upload_size);
+    G_GUINT64_FORMAT " of %" G_GUINT64_FORMAT " total bytes", new_offset,
+    sink->current_pos, sink->upload_size);
 
   const gsize buffer_start = sink->current_pos - sink->buffer_pos;
   const gsize buffer_end = buffer_start + sink->config.buffer_size;
@@ -947,7 +947,7 @@ gst_s3_sink_do_seek (GstS3Sink * sink, guint64 new_offset)
         gboolean res;
 
         GST_TRACE_OBJECT (sink, "Seeking to offset %" G_GUINT64_FORMAT
-            " using multipart upload copy", new_offset);
+          " using multipart upload copy", new_offset);
         res = gst_s3_uploader_upload_part_copy(
           sink->uploader,
           sink->config.bucket,
@@ -964,7 +964,7 @@ gst_s3_sink_do_seek (GstS3Sink * sink, guint64 new_offset)
       }
       else if (new_pos > 0) {
         GST_TRACE_OBJECT (sink, "Seeking to offset %" G_GUINT64_FORMAT
-            " by downloading", new_offset);
+          " by downloading", new_offset);
 
         const gsize bytes_read = gst_s3_downloader_download_part(
           sink->downloader,
@@ -984,8 +984,8 @@ gst_s3_sink_do_seek (GstS3Sink * sink, guint64 new_offset)
   while (sink->current_pos < new_offset)
   {
     bytes_to_zero =
-        MIN(sink->config.buffer_size - sink->buffer_size,
-        new_offset - sink->current_pos);
+      MIN(sink->config.buffer_size - sink->buffer_size,
+      new_offset - sink->current_pos);
     memset(sink->buffer + sink->buffer_pos, 0, bytes_to_zero);
     sink->buffer_size += bytes_to_zero;
     sink->buffer_pos += bytes_to_zero;
