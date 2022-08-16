@@ -41,8 +41,6 @@ public:
     return downloader;
   }
 
-  ~Downloader();
-
   size_t download_part(char * buffer, size_t first, size_t last);
 
 private:
@@ -62,11 +60,6 @@ Downloader::Downloader(const GstS3UploaderConfig *config) :
     _key(std::move(get_key_from_config(config))),
     _api_handle(config->init_aws_sdk ? gst::aws::AwsApiHandle::GetHandle() : nullptr)
 {
-}
-
-Downloader::~Downloader()
-{
-  //  TODO:
 }
 
 bool Downloader::_init_downloader(const GstS3UploaderConfig *config)
