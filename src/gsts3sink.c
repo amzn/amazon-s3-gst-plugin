@@ -898,8 +898,8 @@ gst_s3_sink_do_seek (GstS3Sink * sink, guint64 new_offset)
   const gsize buffer_end = buffer_start + sink->config.buffer_size;
 
   if (new_offset >= buffer_start && new_offset < buffer_end) {
-      GST_TRACE_OBJECT (sink, "Seeking to offset %" G_GUINT64_FORMAT
-          " which is within current buffer", new_offset);
+    GST_TRACE_OBJECT (sink, "Seeking to offset %" G_GUINT64_FORMAT
+      " which is within current buffer", new_offset);
 
     sink->current_pos = MIN(buffer_start + sink->buffer_size, new_offset);
     sink->buffer_pos = sink->current_pos - buffer_start;
