@@ -66,13 +66,34 @@ struct _GstS3Sink {
   gsize buffer_pos;
   // Total accumulated size of data in the buffer
   gsize buffer_size;
+  // This buffer was filled from cache
+  gboolean buffer_from_cache;
 
   gboolean is_started;
+
+  // flag for when an EOS event is being handled
+  // so that we can better understand how to flush.
+  gboolean becoming_eos;
+
+  // flag for tracking if the uploader needs to be
+  // completed, destroyed, and re-created from the
+  // s3 reference version for some reason prior to
+  // doing any download/copy-upload -like operations
+  // that would require the uploader to 'complete'
+  gboolean uploader_needs_complete;
 };
 
 struct _GstS3SinkClass {
   GstBaseSinkClass parent_class;
+
+  GstS3Uploader*   (*uploader_new)   (const GstS3UploaderConfig *config);
+  GstS3Downloader* (*downloader_new) (const GstS3UploaderConfig *config);
 };
+
+// When declaring a type using boilerplate GST_TYPE kit, this method
+// is produced in the macro in the header.
+GST_EXPORT
+GstS3SinkClass* GST_S3_SINK_GET_CLASS(gpointer *ptr);
 
 GST_EXPORT
 GType gst_s3_sink_get_type (void);

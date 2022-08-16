@@ -3,10 +3,13 @@ project('amazon-s3-gst-plugin', 'c', 'cpp',
   default_options : [ 'warning_level=2',
                       'buildtype=debugoptimized' ])
 
-gst_req = '>= 1.0.0'
-aws_cpp_sdk_req = '>= 1.7.202'
+gst_req = '>= 1.20.2'
+aws_cpp_sdk_req = '>= 1.9.210'
 
 gst_s3_version = meson.project_version()
+
+c_args = ['-std=c17']
+cpp_args = ['-std=c++17']
 
 apiversion = '1.0'
 

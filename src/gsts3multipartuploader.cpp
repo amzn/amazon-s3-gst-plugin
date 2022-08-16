@@ -22,6 +22,7 @@
 #include "gstawsutils.hpp"
 #include "gstawscredentials.hpp"
 #include "gstawsapihandle.hpp"
+#include "gsts3uploaderpartcache.hpp"
 
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentials.h>
@@ -112,6 +113,11 @@ public:
         std::lock_guard<std::mutex> l(_mtx);
 
         int num = state.get_part_number();
+
+        // If previously uploaded, remove the old one.
+        if (_parts_completed.find(num) != _parts_completed.end())
+            _parts_completed.erase(num);
+
         _insert(_parts_in_flight, num, std::move(state));
     }
 
@@ -237,9 +243,15 @@ public:
 
     ~MultipartUploader();
 
-    bool upload(const char* data, size_t size);
+    bool upload(const char* data, size_t size, char** next, size_t *next_size);
     bool upload_copy(const char* bucket, const char *key, size_t first, size_t last);
+    bool seek (size_t offset, char **buffer, size_t *size);
     bool complete();
+
+    // AWS defines part numbers as inclusively 1-10000.
+    static bool part_num_range_check  (int part_num) {
+        return (1 <= part_num && part_num <= 10000);
+    }
 
 private:
     explicit MultipartUploader(const GstS3UploaderConfig *config);
@@ -270,6 +282,8 @@ private:
 
     int _part_counter = 0;
     bool _verify_hash = false;
+
+    UploaderPartCache _part_cache;
 };
 
 // TODO: There's a few things I didn't implement because they're not critical (yet), but might
@@ -286,7 +300,8 @@ MultipartUploader::MultipartUploader(const GstS3UploaderConfig *config) :
     _bucket(std::move(get_bucket_from_config(config))),
     _key(std::move(get_key_from_config(config))),
     _api_handle(config->init_aws_sdk ? AwsApiHandle::GetHandle() : nullptr),
-    _part_states(std::make_shared<PartStateCollection>(false))
+    _part_states(std::make_shared<PartStateCollection>(false)),
+    _part_cache(config->cache_num_parts)
 {
 }
 
@@ -395,9 +410,12 @@ std::unique_ptr<Aws::IOStream> MultipartUploader::_create_stream(const char* dat
         new Aws::IOStream(new Aws::Utils::Stream::PreallocatedStreamBuf(buffer, size)));
 }
 
-bool MultipartUploader::upload(const char* data, size_t size)
+bool MultipartUploader::upload(const char* data, size_t size, char** next, size_t *next_size)
 {
     int part_number = ++_part_counter;
+
+    // Check the cache for the next part, if it exists.
+    _part_cache.get_copy(part_number+1, next, next_size);
 
     std::shared_ptr<Aws::IOStream> stream = _create_stream(data, size);
     Aws::S3::Model::UploadPartRequest request;
@@ -420,6 +438,8 @@ bool MultipartUploader::upload(const char* data, size_t size)
     _part_states->start(std::move(part_state));
 
     auto context = std::make_shared<MultipartUploaderContext>(_part_states, _buffer_manager, part_number);
+
+    _part_cache.insert_or_update(part_number, data, size);
 
     _s3_client->UploadPartAsync(request, _handle_upload_completed, context);
 
@@ -449,9 +469,25 @@ bool MultipartUploader::upload_copy(const char* bucket, const char *key, size_t 
 
     auto context = std::make_shared<MultipartUploaderContext>(_part_states, _buffer_manager, part_number);
 
+    // Note the part in the cache but nothing was downloaded locally, so obv. we cannot cache it.
+    // However, knowing the size is helpful for finding other parts later, by offset.
+    _part_cache.insert_or_update(part_number, NULL, last - first);
+
     _s3_client->UploadPartCopyAsync(request, _handle_upload_copy_completed, context);
 
     return true;
+}
+
+bool MultipartUploader::seek (gsize offset, char **buffer, size_t *size)
+{
+    int part_num = 0;
+    if (_part_cache.find(offset, &part_num, buffer, size) && (*buffer != NULL)) {
+        // set counter to previous value so the next upload() increments
+        // to the correct part number.
+        _part_counter = part_num - 1;
+        return true;
+    }
+    return false;
 }
 
 bool MultipartUploader::complete()
@@ -549,11 +585,11 @@ gst_s3_multipart_uploader_destroy (GstS3Uploader * uploader)
 
 static gboolean
 gst_s3_multipart_uploader_upload_part (GstS3Uploader *
-    uploader, const gchar * buffer, gsize size)
+    uploader, const gchar * buffer, gsize size, gchar **next, gsize *next_size)
 {
   GstS3MultipartUploader *self = MULTIPART_UPLOADER_ (uploader);
   g_return_val_if_fail (self && self->impl, FALSE);
-  return self->impl->upload (buffer, size);
+  return self->impl->upload (buffer, size, next, next_size);
 }
 
 static gboolean
@@ -567,6 +603,15 @@ gst_s3_multipart_uploader_upload_part_copy (GstS3Uploader *
 }
 
 static gboolean
+gst_s3_multipart_uploader_seek (GstS3Uploader *
+    uploader, gsize offset, gchar **buffer, gsize *size)
+{
+  GstS3MultipartUploader *self = MULTIPART_UPLOADER_ (uploader);
+  g_return_val_if_fail (self && self->impl, FALSE);
+  return self->impl->seek (offset, buffer, size);
+}
+
+static gboolean
 gst_s3_multipart_uploader_complete (GstS3Uploader * uploader)
 {
   GstS3MultipartUploader *self = MULTIPART_UPLOADER_ (uploader);
@@ -577,6 +622,7 @@ static GstS3UploaderClass default_class = {
   gst_s3_multipart_uploader_destroy,
   gst_s3_multipart_uploader_upload_part,
   gst_s3_multipart_uploader_upload_part_copy,
+  gst_s3_multipart_uploader_seek,
   gst_s3_multipart_uploader_complete
 };
 

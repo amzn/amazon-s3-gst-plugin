@@ -27,12 +27,26 @@
 
 #include <gst/gst.h>
 
-struct _GstS3Downloader {
-  _GstS3Downloader(const GstS3UploaderConfig *config);
+namespace gst::aws::s3 {
 
-  bool _init_downloader(const GstS3UploaderConfig *config);
+class Downloader {
+public:
+  static std::unique_ptr<Downloader> create(const GstS3UploaderConfig *config)
+  {
+    auto downloader = std::unique_ptr<Downloader>(new Downloader(config));
+    if (!downloader->_init_downloader(config))
+    {
+      return nullptr;
+    }
+    return downloader;
+  }
 
   size_t download_part(char * buffer, size_t first, size_t last);
+
+private:
+  explicit Downloader(const GstS3UploaderConfig *config);
+
+  bool _init_downloader(const GstS3UploaderConfig *config);
 
   Aws::String _bucket;
   Aws::String _key;
@@ -41,14 +55,14 @@ struct _GstS3Downloader {
   std::unique_ptr<Aws::S3::S3Client> _s3_client;
 };
 
-_GstS3Downloader::_GstS3Downloader(const GstS3UploaderConfig *config) :
+Downloader::Downloader(const GstS3UploaderConfig *config) :
     _bucket(std::move(get_bucket_from_config(config))),
     _key(std::move(get_key_from_config(config))),
     _api_handle(config->init_aws_sdk ? gst::aws::AwsApiHandle::GetHandle() : nullptr)
 {
 }
 
-bool _GstS3Downloader::_init_downloader(const GstS3UploaderConfig *config)
+bool Downloader::_init_downloader(const GstS3UploaderConfig *config)
 {
   Aws::Client::ClientConfiguration client_config;
   if (!is_null_or_empty(config->ca_file))
@@ -101,7 +115,7 @@ bool _GstS3Downloader::_init_downloader(const GstS3UploaderConfig *config)
 }
 
 size_t
-_GstS3Downloader::download_part(char* buffer, size_t first, size_t last)
+Downloader::download_part(char* buffer, size_t first, size_t last)
 {
   char *range = g_strdup_printf("bytes=%ld-%ld", first, last);
 
@@ -125,31 +139,71 @@ _GstS3Downloader::download_part(char* buffer, size_t first, size_t last)
     .gcount();
 }
 
+}; // gst::aws::s3
+
+using gst::aws::s3::Downloader;
+
+#define DOWNLOADER_(downloader) reinterpret_cast<GstS3DefaultDownloader*>(downloader);
+
+typedef struct _GstS3DefaultDownloader GstS3DefaultDownloader;
+
+struct _GstS3DefaultDownloader
+{
+  GstS3Downloader base;
+  std::unique_ptr<Downloader> impl;
+
+  _GstS3DefaultDownloader(std::unique_ptr<Downloader> impl);
+};
+
+static void
+gst_s3_default_downloader_destroy (GstS3Downloader *downloader)
+{
+  delete DOWNLOADER_(downloader);
+}
+
+static size_t
+gst_s3_default_downloader_download_part (GstS3Downloader *downloader, char* buff, size_t first, size_t last)
+{
+  GstS3DefaultDownloader *self = DOWNLOADER_(downloader);
+  g_return_val_if_fail(self && self->impl, FALSE);
+  return self->impl->download_part (buff, first, last);
+}
+
 GstS3Downloader *
 gst_s3_downloader_new (const GstS3UploaderConfig * config)
 {
   g_return_val_if_fail (config, NULL);
 
-  auto impl = new _GstS3Downloader(config);
+  auto impl = Downloader::create(config);
 
-  if (!impl->_init_downloader(config))
+  if (!impl)
   {
-    delete impl;
     return NULL;
   }
 
-  return impl;
+  return reinterpret_cast <GstS3Downloader *>(new GstS3DefaultDownloader (std::move (impl)));
 }
 
-void
-gst_s3_downloader_free (GstS3Downloader * downloader)
+static GstS3DownloaderClass default_class = {
+  gst_s3_default_downloader_destroy,
+  gst_s3_default_downloader_download_part
+};
+
+_GstS3DefaultDownloader::_GstS3DefaultDownloader(std::unique_ptr<Downloader> impl) :
+    impl(std::move(impl))
 {
-  delete reinterpret_cast<_GstS3Downloader *>(downloader);
+  base.klass = &default_class;
+}
+
+#define GET_CLASS_(downloader) ((GstS3Downloader*) (downloader))->klass
+
+void
+gst_s3_downloader_destroy (GstS3Downloader * downloader) {
+  GET_CLASS_ (downloader)->destroy(downloader);
 }
 
 gsize
-gst_s3_downloader_download_part (GstS3Downloader * downloader,
-    gchar * buffer, gsize first, gsize last)
+gst_s3_downloader_download_part (GstS3Downloader * downloader, gchar * buffer, gsize first, gsize last)
 {
-  return reinterpret_cast<_GstS3Downloader *>(downloader)->download_part(buffer, first, last);
+  return GET_CLASS_ (downloader)->download_part (downloader, buffer, first, last);
 }

@@ -27,9 +27,18 @@ G_BEGIN_DECLS
 
 typedef struct _GstS3Downloader GstS3Downloader;
 
+typedef struct {
+  void   (*destroy) (GstS3Downloader *);
+  size_t (*download_part) (GstS3Downloader *, gchar *buffer, size_t first, size_t last);
+} GstS3DownloaderClass;
+
+struct _GstS3Downloader {
+  GstS3DownloaderClass *klass;
+};
+
 GstS3Downloader *gst_s3_downloader_new (const GstS3UploaderConfig * config);
 
-void gst_s3_downloader_free (GstS3Downloader * downloader);
+void gst_s3_downloader_destroy (GstS3Downloader * downloader);
 
 gsize gst_s3_downloader_download_part (GstS3Downloader *
     downloader, gchar * buffer, gsize first, gsize last);
