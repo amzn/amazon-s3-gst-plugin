@@ -23,7 +23,7 @@ jobs:
           libgstreamer1.0-dev python3-pip python3-setuptools
       - uses: actions/checkout@v3
       - run: pip3 install meson ninja
-      - run: 'git clone --depth 1 https://github.com/aws/aws-sdk-cpp.git -b 1.7.202'
+      - run: 'git clone --recurse-submodules --depth 1 https://github.com/aws/aws-sdk-cpp.git -b 1.10.30'
       - run: cmake -DBUILD_ONLY="s3;sts" aws-sdk-cpp
       - run: make -j 4
       - run: sudo make install
