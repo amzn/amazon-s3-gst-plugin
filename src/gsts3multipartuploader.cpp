@@ -484,7 +484,7 @@ bool MultipartUploader::_init_uploader(const GstS3UploaderConfig * config)
 
     const char* endpoint_provider_allocation_tag = "AWSS3EndpointProvider";
 
-    if (config->aws_sdk_s3_sign_payload) {
+    if (!config->aws_sdk_s3_sign_payload) {
         client_config.payloadSigningPolicy = Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never;
         client_config.useVirtualAddressing = false;
     }
