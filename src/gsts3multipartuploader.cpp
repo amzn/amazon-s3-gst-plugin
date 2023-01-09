@@ -35,6 +35,7 @@
 #include <aws/s3/model/GetBucketLocationResult.h>
 #include <aws/s3/model/UploadPartRequest.h>
 #include <aws/s3/S3Client.h>
+#include <aws/s3/S3ClientConfiguration.h>
 #include <aws/sts/model/AssumeRoleRequest.h>
 #include <aws/sts/STSClient.h>
 
@@ -442,7 +443,7 @@ void MultipartUploader::_init_buffer_manager(size_t buffer_count, size_t buffer_
 
 bool MultipartUploader::_init_uploader(const GstS3UploaderConfig * config)
 {
-    Aws::Client::ClientConfiguration client_config;
+    Aws::S3::S3ClientConfiguration client_config;
     if (!is_null_or_empty(config->ca_file))
     {
         client_config.caFile = config->ca_file;
@@ -481,9 +482,14 @@ bool MultipartUploader::_init_uploader(const GstS3UploaderConfig * config)
     }
     client_config.verifySSL = config->aws_sdk_verify_ssl;
 
-    _s3_client = config->aws_sdk_s3_sign_payload ?
-        std::unique_ptr<Aws::S3::S3Client>(new Aws::S3::S3Client(std::move(credentials_provider), client_config)) :
-        std::unique_ptr<Aws::S3::S3Client>(new Aws::S3::S3Client(std::move(credentials_provider), client_config, Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never, false));
+    const char* endpoint_provider_allocation_tag = "AWSS3EndpointProvider";
+
+    if (!config->aws_sdk_s3_sign_payload) {
+        client_config.payloadSigningPolicy = Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never;
+        client_config.useVirtualAddressing = false;
+    }
+
+    _s3_client = std::unique_ptr<Aws::S3::S3Client>(new Aws::S3::S3Client(std::move(credentials_provider), Aws::MakeShared<Aws::S3::Endpoint::S3EndpointProvider>(endpoint_provider_allocation_tag), client_config));
 
     _init_buffer_manager(config->buffer_count, config->buffer_size);
 
