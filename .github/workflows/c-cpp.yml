@@ -31,3 +31,5 @@ jobs:
       - run: ninja -C build
       - run: 'export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH'
       - run: ninja -C build test
+      - run: ls
+      - run: cd build && ls
