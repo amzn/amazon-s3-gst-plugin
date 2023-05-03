@@ -12,27 +12,25 @@ jobs:
     strategy:
       matrix:
         os:
-          - ubuntu-20.04
+          - ubuntu-22.04
     steps:
-      - name: Install AWS SDK (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y curl libcurl4-openssl-dev python3-setuptools python3-pip
-          pip3 install meson ninja
-          git clone --depth 1 --recurse-submodules https://github.com/aws/aws-sdk-cpp.git -b 1.9.210
-          cd aws-sdk-cpp
-          mkdir _build
-          cmake -S . -B _build -GNinja -DBUILD_ONLY="s3;sts" -DENABLE_TESTING=OFF
-          cmake --build _build
-          sudo cmake --install _build
       - name: Install GStreamer (Linux)
         if: runner.os == 'Linux'
         uses: blinemedical/setup-gstreamer@main
         with:
-          version: '1.20.2'
-      - name: Checkout Plugin
-        uses: actions/checkout@v3
+          version: '1.22.2'
+      - name: Install dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: >-
+          sudo apt-get update
+
+          sudo apt-get install -y curl libcurl4-openssl-dev cmake python3-pip python3-setuptools
+      - uses: actions/checkout@v3
+      - run: pip3 install meson ninja
+      - run: 'git clone --recurse-submodules --depth 1 https://github.com/aws/aws-sdk-cpp.git -b 1.10.30'
+      - run: cmake -DBUILD_ONLY="s3;sts" aws-sdk-cpp
+      - run: make -j 4
+      - run: sudo make install
       - run: meson build
       - run: ninja -C build
       - run: 'export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH'

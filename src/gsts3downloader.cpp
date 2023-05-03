@@ -108,7 +108,7 @@ bool Downloader::_init_downloader(const GstS3UploaderConfig *config)
   client_config.verifySSL = config->aws_sdk_verify_ssl;
 
   _s3_client = config->aws_sdk_s3_sign_payload ?
-    std::unique_ptr<Aws::S3::S3Client>(new Aws::S3::S3Client(std::move(credentials_provider), client_config)) :
+    std::unique_ptr<Aws::S3::S3Client>(new Aws::S3::S3Client(std::move(credentials_provider), Aws::MakeShared<Aws::S3::S3EndpointProvider>(Aws::S3::S3Client::ALLOCATION_TAG), client_config)) :
     std::unique_ptr<Aws::S3::S3Client>(new Aws::S3::S3Client(std::move(credentials_provider), client_config, Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never, false));
 
   return true;
