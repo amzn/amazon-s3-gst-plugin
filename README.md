@@ -24,7 +24,11 @@ After executing commands above, the plugin (`libgsts3elements.so`) should be ins
 ```bash 
 $ GST_PLUGIN_PATH=src gst-inspect-1.0 s3sink
 ```
-
+*** For building in Windows: ***
+```bash
+meson setup --vsenv --buildtype debug --pkg-config-path C:/aws-cpp-sdk-all/lib/pkgconfig build
+meson compile -C build -j 0
+```
 ## Elements
 * s3sink - streams the multimedia to a specified bucket.
 
