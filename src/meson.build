@@ -26,7 +26,7 @@ aws_utils = static_library('awsutils', [
 credentials = library('gstawscredentials-@0@'.format(apiversion),
   ['gstawscredentials.cpp'],
   link_with: aws_utils,
-  dependencies : [aws_cpp_sdk_sts_dep, gst_dep],
+  dependencies : [aws_cpp_sdk_sts_dep, gst_dep, aws_cpp_sdk_core_dep],
   cpp_args: symbol_export_define + cpp_args,
   install : true
 )

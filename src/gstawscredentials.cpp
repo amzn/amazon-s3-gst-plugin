@@ -16,10 +16,13 @@
  * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
+
+
 #include "gstawscredentials.hpp"
 
 #include "gstawsutils.hpp"
 
+#define USE_IMPORT_EXPORT
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
 #include <aws/sts/model/AssumeRoleRequest.h>
 #include <aws/sts/STSClient.h>

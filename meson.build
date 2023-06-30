@@ -4,12 +4,12 @@ project('amazon-s3-gst-plugin', 'c', 'cpp',
                       'buildtype=debugoptimized' ])
 
 gst_req = '>= 1.20.2'
-aws_cpp_sdk_req = '>= 1.10.30'
+aws_cpp_sdk_req = '>= 1.9.210'
 
 gst_s3_version = meson.project_version()
 
-c_args = ['-std=c17']
-cpp_args = ['-std=c++17']
+c_args = ['/std:c17', '/USE_IMPORT_EXPORT:ON']
+cpp_args = ['/std:c++17', '/USE_IMPORT_EXPORT:ON']
 
 apiversion = '1.0'
 
@@ -22,6 +22,7 @@ gst_check_dep = dependency('gstreamer-check-1.0', version : gst_req,
   fallback : ['gstreamer', 'gst_check_dep'])
 aws_cpp_sdk_s3_dep = dependency('aws-cpp-sdk-s3', version : aws_cpp_sdk_req)
 aws_cpp_sdk_sts_dep = dependency('aws-cpp-sdk-sts', version : aws_cpp_sdk_req)
+aws_cpp_sdk_core_dep = dependency('aws-cpp-sdk-core', version : aws_cpp_sdk_req)
 
 configinc = include_directories('.')
 
