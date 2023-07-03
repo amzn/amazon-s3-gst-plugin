@@ -20,6 +20,7 @@
 #define __GST_AWS_CREDENTIALS_HPP__
 
 #include "gstawscredentials.h"
+
 #include <aws/core/auth/AWSCredentialsProvider.h>
 #include <functional>
 

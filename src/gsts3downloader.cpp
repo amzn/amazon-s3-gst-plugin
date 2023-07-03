@@ -21,7 +21,6 @@
 #include "gstawsutils.hpp"
 #include "gstawsapihandle.hpp"
 #include "gstawscredentials.hpp"
-
 #include <aws/s3/model/GetObjectRequest.h>
 #include <aws/s3/model/GetObjectResult.h>
 #include <aws/s3/S3Client.h>
