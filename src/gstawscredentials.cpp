@@ -22,7 +22,6 @@
 
 #include "gstawsutils.hpp"
 
-#define USE_IMPORT_EXPORT
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
 #include <aws/sts/model/AssumeRoleRequest.h>
 #include <aws/sts/STSClient.h>

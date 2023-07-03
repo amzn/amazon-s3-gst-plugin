@@ -7,9 +7,15 @@ gst_req = '>= 1.20.2'
 aws_cpp_sdk_req = '>= 1.9.210'
 
 gst_s3_version = meson.project_version()
+host_system = host_machine.system()
 
-c_args = ['/std:c17', '/USE_IMPORT_EXPORT:ON']
-cpp_args = ['/std:c++17', '/USE_IMPORT_EXPORT:ON']
+if host_system == 'windows'
+  c_args = ['/std:c17']
+  cpp_args = ['/std:c++20']
+else
+  c_args = ['-std=c17']
+  cpp_args = ['-std=c++17']
+endif
 
 apiversion = '1.0'
 

@@ -24,7 +24,6 @@
 #include "gstawsapihandle.hpp"
 #include "gsts3uploaderpartcache.hpp"
 
-#define USE_IMPORT_EXPORT
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentials.h>
 #include <aws/core/auth/AWSCredentialsProviderChain.h>

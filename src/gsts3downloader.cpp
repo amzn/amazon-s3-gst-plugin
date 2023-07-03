@@ -22,7 +22,6 @@
 #include "gstawsapihandle.hpp"
 #include "gstawscredentials.hpp"
 
-#define USE_IMPORT_EXPORT
 #include <aws/s3/model/GetObjectRequest.h>
 #include <aws/s3/model/GetObjectResult.h>
 #include <aws/s3/S3Client.h>
