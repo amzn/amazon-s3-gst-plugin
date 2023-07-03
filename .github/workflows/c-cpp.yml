@@ -16,11 +16,11 @@ jobs:
     steps:
       - name: Install dependencies (Ubuntu)
         if: runner.os == 'Linux'
-        run: >-
+        run: |
           sudo apt-get update
-
-          sudo apt-get install -y curl libcurl4-openssl-dev cmake gstreamer1.0-plugins-base
-          libgstreamer1.0-dev python3-pip python3-setuptools
+          # remove libunwind-*-dev from the runner to avoid conflicts with a dependency of libgstreamer1.0-dev
+          sudo apt-get remove -y libunwind-14-dev libunwind-13-dev
+          sudo apt-get install -y curl libcurl4-openssl-dev cmake gstreamer1.0-plugins-base libgstreamer1.0-dev python3-pip python3-setuptools
       - uses: actions/checkout@v3
       - run: pip3 install meson ninja
       - run: 'git clone --recurse-submodules --depth 1 https://github.com/aws/aws-sdk-cpp.git -b 1.10.30'
