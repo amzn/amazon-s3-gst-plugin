@@ -26,6 +26,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew update
+          brew install --overwrite python@3.11
           brew install --overwrite gstreamer
       - uses: actions/checkout@v3
       - run: pip3 install meson ninja
