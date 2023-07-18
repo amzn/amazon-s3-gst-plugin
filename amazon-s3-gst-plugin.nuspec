@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package >
+    <metadata>
+        <id>Amazon-S3-Plugin</id>
+        <version>0.2.0</version>
+        <description>Amazon Gstreamer S3 Plugin</description>
+        <authors> Thomas Goodwin, Lyra McMillan, Jeff Wilson, Sara Boule</authors>
+        <tags>Native, native</tags>
+        <dependencies>
+            <group targetFramework="native0.0" />
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="build\src\gsts3elements.dll" target="lib\native\" />
+        <file src="build\src\gstawscredentials-1.0.dll" target="lib\native\" />
+        <file src="amazon-s3-gst-plugin.targets" target="build\" />
+    </files>
+</package>
