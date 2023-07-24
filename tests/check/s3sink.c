@@ -771,6 +771,43 @@ GST_START_TEST (test_seek_to_first_part)
 }
 GST_END_TEST
 
+GST_START_TEST (test_retry_max_scale)
+{
+  // Verify that configuring the retry max+scale properties before tansitioning out of NULL
+  // works by verifying it no longer takes ~25 seconds to fail the connection when using the
+  // real downloader.
+  // In the default case, the attempts are the sum of delays:
+  //   ~25550 ms = 0, 50, 100, 200, 400, 800, 1600, 3200, 6400, 12800 ms.
+  // Configuring then to 3 retries, the total expected delay is:
+  //      150 ms = 0, 50, 100
+  GDateTime *started = NULL;
+  GDateTime *stopped = NULL;
+  gfloat diff_ms = 0;
+  GstStateChangeReturn scr = GST_STATE_CHANGE_SUCCESS;
+
+  GstElement *sink = gst_element_factory_make_full ("s3sink",
+    "name", "sink",
+    "region", "bad-region",
+    "bucket", "two-tears-inna",
+    "key", "some-key",
+    "aws-sdk-request-timeout", 2000,
+    "aws-sdk-retry-max", 3,
+    "aws-sdk-retry-scale", 25,
+    NULL);
+
+  started = g_date_time_new_now_utc();
+  scr = gst_element_set_state (sink, GST_STATE_READY);
+  stopped = g_date_time_new_now_utc();
+  diff_ms = (gfloat) g_date_time_difference (stopped, started) / 1000.0f;
+
+  fail_unless (scr == GST_STATE_CHANGE_FAILURE);
+  fail_if (diff_ms > 300);
+  fail_if (diff_ms < 100);
+  gst_element_set_state (sink, GST_STATE_NULL);
+  gst_clear_object (&sink);
+}
+GST_END_TEST
+
 GST_PLUGIN_STATIC_DECLARE(s3elements);
 
 static Suite *

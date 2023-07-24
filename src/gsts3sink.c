@@ -79,6 +79,8 @@ enum
   PROP_AWS_SDK_VERIFY_SSL,
   PROP_AWS_SDK_S3_SIGN_PAYLOAD,
   PROP_AWS_SDK_REQUEST_TIMEOUT,
+  PROP_AWS_SDK_RETRY_MAX,
+  PROP_AWS_SDK_RETRY_SCALE,
   PROP_NUM_CACHE_PARTS,
   PROP_LAST
 };
@@ -250,6 +252,20 @@ gst_s3_sink_class_init (GstS3SinkClass * klass)
       GST_S3_UPLOADER_CONFIG_DEFAULT_PROP_AWS_SDK_REQUEST_TIMEOUT,
       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property (gobject_class,  PROP_AWS_SDK_RETRY_MAX,
+    g_param_spec_int ("aws-sdk-retry-max", "AWS SDK Retry Maximum",
+      "Maximum number of retries for calls to the API (exponential back-off)",
+      0, G_MAXINT32, /* min / max */
+      GST_S3_UPLOADER_CONFIG_DEFAULT_PROP_AWS_SDK_RETRY_MAX,
+      G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class,  PROP_AWS_SDK_RETRY_SCALE,
+    g_param_spec_int ("aws-sdk-retry-scale", "AWS SDK Retry Scale",
+      "Retry scale for exponential back-off strategy",
+      1, G_MAXINT32, /* min / max */
+      GST_S3_UPLOADER_CONFIG_DEFAULT_PROP_AWS_SDK_RETRY_SCALE,
+      G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+
   g_object_class_install_property (gobject_class,  PROP_NUM_CACHE_PARTS,
     g_param_spec_int ("num-cache-parts", "Number of Parts to cache in uploader",
       "0 is no cache; [1,10000] cache first N parts, [-10000,-1] last N parts",
@@ -418,6 +434,12 @@ gst_s3_sink_set_property (GObject * object, guint prop_id,
     case PROP_AWS_SDK_REQUEST_TIMEOUT:
       sink->config.aws_sdk_request_timeout_ms = g_value_get_int (value);
       break;
+    case PROP_AWS_SDK_RETRY_MAX:
+      sink->config.aws_sdk_retry_max = g_value_get_int (value);
+      break;
+    case PROP_AWS_SDK_RETRY_SCALE:
+      sink->config.aws_sdk_retry_scale = g_value_get_int (value);
+      break;
     case PROP_NUM_CACHE_PARTS:
       if (sink->is_started) {
         GST_WARNING("Changing num-cache-parts property after starting the element is not supported yet.");
@@ -479,6 +501,12 @@ gst_s3_sink_get_property (GObject * object, guint prop_id, GValue * value,
       break;
     case PROP_AWS_SDK_REQUEST_TIMEOUT:
       g_value_set_int (value, sink->config.aws_sdk_request_timeout_ms);
+      break;
+    case PROP_AWS_SDK_RETRY_MAX:
+      g_value_set_int (value, sink->config.aws_sdk_retry_max);
+      break;
+    case PROP_AWS_SDK_RETRY_SCALE:
+      g_value_set_int (value, sink->config.aws_sdk_retry_scale);
       break;
     case PROP_NUM_CACHE_PARTS:
       g_value_set_int (value, sink->config.cache_num_parts);

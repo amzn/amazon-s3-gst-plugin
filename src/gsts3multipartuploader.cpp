@@ -27,6 +27,7 @@
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentials.h>
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
+#include <aws/core/client/DefaultRetryStrategy.h>
 #include <aws/core/utils/HashingUtils.h>
 #include <aws/core/utils/ResourceManager.h>
 #include <aws/core/utils/stream/PreallocatedStreamBuf.h>
@@ -379,6 +380,14 @@ bool MultipartUploader::_init_uploader(const GstS3UploaderConfig * config)
         client_config.payloadSigningPolicy = Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never;
         client_config.useVirtualAddressing = false;
     }
+
+    // Configure the retry strategy; default is 10 retries, exponential backoff scale 25.  However this
+    // is going to impact the NULL->READY transition in the event of a misconfiguration, which means
+    // it will block the GStreamer set_state call for ~25 seconds on misconfiguration since that state
+    // change does not return ASYNC.
+    client_config.retryStrategy = std::make_shared<Aws::Client::DefaultRetryStrategy>(
+        config->aws_sdk_retry_max,
+        config->aws_sdk_retry_scale);
 
     _s3_client = std::unique_ptr<Aws::S3::S3Client>(new Aws::S3::S3Client(std::move(credentials_provider), Aws::MakeShared<Aws::S3::Endpoint::S3EndpointProvider>(endpoint_provider_allocation_tag), client_config));
 
