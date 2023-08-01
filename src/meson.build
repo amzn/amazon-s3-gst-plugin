@@ -15,7 +15,7 @@ symbol_export_define = ['-DGST_EXPORTS']
 
 credentials = library('gstawscredentials-@0@'.format(apiversion),
   ['gstawscredentials.cpp'],
-  dependencies : [aws_cpp_sdk_sts_dep, gst_dep],
+  dependencies : [aws_cpp_sdk_sts_dep, gst_dep, aws_c_common_dep, aws_crt_cpp_dep],
   cpp_args: symbol_export_define,
   install : true
 )
@@ -37,7 +37,7 @@ gst_s3_elements = library('gsts3elements',
   gst_s3_elements_sources,
   cpp_args: symbol_export_define,
   c_args: symbol_export_define,
-  dependencies : [gst_dep, gst_base_dep, multipart_uploader_dep, credentials_dep],
+  dependencies : [gst_dep, gst_base_dep, multipart_uploader_dep, credentials_dep, aws_c_common_dep, aws_crt_cpp_dep],
   include_directories : [configinc],
   install : true,
   install_dir : plugins_install_dir,
@@ -45,7 +45,7 @@ gst_s3_elements = library('gsts3elements',
 
 s3elements_dep = declare_dependency(link_with : gst_s3_elements,
   include_directories : [include_directories('.')],
-  dependencies : [gst_dep, gst_base_dep, aws_cpp_sdk_s3_dep, aws_cpp_sdk_sts_dep]
+  dependencies : [gst_dep, gst_base_dep, aws_cpp_sdk_s3_dep, aws_cpp_sdk_sts_dep, aws_c_common_dep, aws_crt_cpp_dep]
 )
 
 install_headers(gst_s3_public_headers, subdir : 'gstreamer-1.0/gst/aws')
