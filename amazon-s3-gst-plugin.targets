@@ -6,8 +6,8 @@
             <Link>gsts3elements.dll</Link>
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None Include="$(MSBuildThisFileDirectory)\..\lib\native\gstawscredentials-1.0.dll.dll">
-            <Link>gstawscredentials-1.0.dll.dll</Link>
+        <None Include="$(MSBuildThisFileDirectory)\..\lib\native\gstawscredentials-1.0.dll">
+            <Link>gstawscredentials-1.0.dll</Link>
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
     </ItemGroup>
