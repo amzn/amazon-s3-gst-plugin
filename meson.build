@@ -14,7 +14,7 @@ if host_system == 'windows'
   cpp_args = ['/std:c++20']
 else
   c_args = ['-std=c17']
-  cpp_args = ['-std=c++17']
+  cpp_args = ['-std=c++17', '-fexceptions']
 endif
 
 apiversion = '1.0'
