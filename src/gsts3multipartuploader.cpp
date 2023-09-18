@@ -17,6 +17,8 @@
  * Boston, MA 02110-1301, USA.
  */
 
+#include <exception>
+
 #include "gsts3multipartuploader.h"
 
 #include "gstawsutils.hpp"
@@ -126,12 +128,20 @@ public:
     void mark_part_as_completed(int part_number, const Aws::String& etag)
     {
         std::unique_lock<std::mutex> l(_mtx);
-
-        PartState state = std::move(_parts_in_flight.at(part_number));
-        _parts_in_flight.erase(part_number);
-        state.set_etag(etag);
-        _insert(_parts_completed, part_number, std::move(state));
-
+        // this is a super defensive just in case
+        // we added the recursive retry to the complete call in an attempt
+        // to avoid clearing the part states too early but we can't make
+        // a guarantee
+        try {
+            PartState state = std::move(_parts_in_flight.at(part_number));
+            _parts_in_flight.erase(part_number);
+            state.set_etag(etag);
+            _insert(_parts_completed, part_number, std::move(state));
+        }
+        catch (std::exception& ex) {
+            // no op - we don't have logging or a return value to set
+            // but this prevents an unhandled exception crash
+        }
         l.unlock();
         _upload_completed_cv.notify_one();
     }
@@ -139,10 +149,18 @@ public:
     void mark_part_as_failed(int part_number)
     {
         std::unique_lock<std::mutex> l(_mtx);
-
-        _insert(_parts_failed, part_number, std::move(_parts_in_flight.at(part_number)));
-        _parts_in_flight.erase(part_number);
-
+        // this is a super defensive just in case
+        // we added the recursive retry to the complete call in an attempt
+        // to avoid clearing the part states too early but we can't make
+        // a guarantee
+        try {
+            _insert(_parts_failed, part_number, std::move(_parts_in_flight.at(part_number)));
+            _parts_in_flight.erase(part_number);
+        }
+        catch (std::exception& ex) {
+            // no op - we don't have logging or a return value to set
+            // but this prevents an unhandled exception crash
+        }
         l.unlock();
         _upload_completed_cv.notify_one();
     }
@@ -181,6 +199,11 @@ public:
         _parts_in_flight.clear();
         _parts_completed.clear();
         _parts_failed.clear();
+    }
+
+    bool parts_in_flight()
+    {
+        return !_parts_in_flight.empty();
     }
 
 private:
@@ -519,6 +542,15 @@ bool MultipartUploader::complete()
     }
 
     size_t parts_failed_count = _part_states->get_failed_parts_count();
+
+    // check to see if a new part was added while updating parts
+    // race condition on completion of stream due to
+    // lost connection and existing buffer flushing along with EOS
+    // if new part added - recursively retry the complete
+    // to avoid clearing part states to early and causing exceptions
+    if (_part_states->parts_in_flight()) {
+        return complete();
+    }
     _part_states->clear();
 
     Aws::S3::Model::CompleteMultipartUploadRequest upload_request;
