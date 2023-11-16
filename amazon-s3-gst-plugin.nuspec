@@ -2,7 +2,7 @@
 <package >
     <metadata>
         <id>Amazon-S3-Plugin</id>
-        <version>0.2.0</version>
+        <version>$version$</version>
         <description>Amazon Gstreamer S3 Plugin</description>
         <authors> Thomas Goodwin, Lyra McMillan, Jeff Wilson, Sara Boule</authors>
         <tags>Native, native</tags>
