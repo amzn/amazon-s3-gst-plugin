@@ -2,7 +2,8 @@ name: Laerdal Labs, DC GStreamer Plugin Windows Build
 on:
   push:
     branches: [ master ]
-    tags: [ 'v*' ]
+  release:
+    types: [released, published]
   pull_request:
     branches: [ master ]
   workflow_dispatch:
@@ -18,7 +19,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          path: aws-s3-gst-plugin 
+          path: aws-s3-gst-plugin
 
       - name: Setup Python
         uses: actions/setup-python@v2
@@ -32,7 +33,7 @@ jobs:
         uses: NuGet/setup-nuget@v1
 
       - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v1.1.3
+        uses: microsoft/setup-msbuild@v1
 
       - name: Setup VS Dev Environment
         uses: seanmiddleditch/gha-setup-vsdevenv@v4
