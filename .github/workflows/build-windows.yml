@@ -24,15 +24,6 @@ jobs:
       - name: Install meson/ninja
         run: pip install meson ninja
 
-      - name: Setup NuGet
-        uses: NuGet/setup-nuget@v1
-
-      - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v1
-
-      - name: Setup VS Dev Environment
-        uses: seanmiddleditch/gha-setup-vsdevenv@v4
-
       - name: Install GStreamer
         id: setup_gstreamer
         uses: blinemedical/setup-gstreamer@v1
@@ -57,6 +48,9 @@ jobs:
           meson setup --vsenv build
           echo "plugin_version=$((meson introspect --projectinfo build | ConvertFrom-Json).version)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
           meson compile -C build
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v1
 
       - name: Generate NuGet packages
         run: |
