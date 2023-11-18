@@ -62,7 +62,7 @@ jobs:
 
       - name: Build Amazon-S3 Plugin
         run: |
-          meson setup --vsenv --buildtype debug --pkg-config-path C:/aws-cpp-sdk-all/lib/pkgconfig build
+          meson setup --vsenv --pkg-config-path C:/aws-cpp-sdk-all/lib/pkgconfig build
           meson compile -C build
 
       - name: Generate NuGet packages
