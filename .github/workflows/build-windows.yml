@@ -57,6 +57,12 @@ jobs:
             mkdir nupkgs
             nuget.exe pack amazon-s3-gst-plugin.nuspec -Version ${{ steps.build_plugin.outputs.plugin_version }}.${{ github.run_number }} -OutputDirectory nupkgs
 
+      - name: Upload NuGet packages
+        uses: actions/upload-artifact@v3
+        with:
+          name: nuget-packages
+          path: 'nupkgs/*.nupkg'
+
       - name: Publish
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
