@@ -35,6 +35,9 @@ GST_EXPORT
 void gst_aws_credentials_free (GstAWSCredentials * credentials);
 
 GST_EXPORT
+GstAWSCredentials * gst_aws_credentials_from_string (const gchar * str);
+
+GST_EXPORT
 GType gst_aws_credentials_get_type (void);
 
 #define GST_TYPE_AWS_CREDENTIALS \

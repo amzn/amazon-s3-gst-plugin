@@ -168,8 +168,8 @@ _gst_aws_credentials_provider_from_string(const gchar * str)
   return provider;
 }
 
-static GstAWSCredentials *
-_gst_aws_credentials_from_string (const gchar * str)
+GstAWSCredentials *
+gst_aws_credentials_from_string (const gchar * str)
 {
   std::string credentials_str = str;
   return gst_aws_credentials_new ([credentials_str] {
@@ -182,7 +182,7 @@ _gst_aws_credentials_deserialize (GValue * value, const gchar * s)
 {
   GstAWSCredentials *credentials;
 
-  credentials = _gst_aws_credentials_from_string (s);
+  credentials = gst_aws_credentials_from_string (s);
 
   if (credentials) {
     g_value_take_boxed (value, credentials);
