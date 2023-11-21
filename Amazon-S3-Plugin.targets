@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Project ToolsVersion="4.0"
+         xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <ItemGroup>
+        <Content Include="$(MSBuildThisFileDirectory)..\runtimes\native\gsts3elements.dll">
+            <Link>lib\gstreamer-1.0\gsts3elements.dll</Link>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <Content Include="$(MSBuildThisFileDirectory)..\runtimes\native\gstawscredentials-1.0.dll">
+            <Link>gstawscredentials-1.0.dll</Link>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <ReferenceCopyLocalPaths Include="$(MSBuildThisFileDirectory)..\runtimes\native\*.dll" />
+    </ItemGroup>
+    <ItemDefinitionGroup>
+        <Link>
+            <AdditionalDependencies>gsts3elements.lib;gstawscredentials-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
+            <AdditionalLibraryDirectories>$(MSBuildThisFileDirectory)native\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+        </Link>
+        <ClCompile>
+            <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)native\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+        </ClCompile>
+    </ItemDefinitionGroup>
+</Project>

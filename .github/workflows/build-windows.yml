@@ -62,7 +62,7 @@ jobs:
             }
             $version += "+g${{ github.sha }}".Substring(0, 7)
 
-            nuget.exe pack amazon-s3-gst-plugin.nuspec -Version $version -OutputDirectory nupkgs
+            nuget.exe pack Amazon-S3-Plugin.nuspec -Version $version -OutputDirectory nupkgs
 
       - name: Upload NuGet packages
         uses: actions/upload-artifact@v3
