@@ -39,7 +39,7 @@ jobs:
 
       - name: Install AWS C++ SDK
         run: |
-          vcpkg install aws-sdk-cpp[s3,sts] --binarysource="clear;x-gha,readwrite"
+          vcpkg install aws-sdk-cpp[s3,sts] --binarysource="clear;x-gha,readwrite" --triplet x64-windows
           echo "CMAKE_PREFIX_PATH=$Env:VCPKG_INSTALLATION_ROOT\installed\x64-windows" | Out-File -FilePath $Env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Build Amazon-S3 Plugin
@@ -71,7 +71,6 @@ jobs:
           path: 'nupkgs/*.nupkg'
 
       - name: Publish
-        if: startsWith(github.ref, 'refs/tags/v') || ( github.event_name == 'release' && github.event.action == 'released' )
         run: |
             Get-ChildItem ./nupkgs -filter "*.nupkg" | foreach{
               dotnet nuget push $_.FullName --skip-duplicate --api-key ${{ secrets.GITHUB_TOKEN }} --source https://nuget.pkg.github.com/blinemedical/index.json
