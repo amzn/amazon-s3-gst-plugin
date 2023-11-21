@@ -780,10 +780,11 @@ GST_START_TEST (test_retry_max_scale)
   //   ~25550 ms = 0, 50, 100, 200, 400, 800, 1600, 3200, 6400, 12800 ms.
   // Configuring then to 3 retries, the total expected delay is:
   //      150 ms = 0, 50, 100
-  GDateTime *started = NULL;
-  GDateTime *stopped = NULL;
-  gfloat diff_ms = 0;
+  gint64 started = 0;
+  gint64 stopped = 0;
+  gfloat startup_time = 0;
   GstStateChangeReturn scr = GST_STATE_CHANGE_SUCCESS;
+  gfloat diff_ms = 0;
 
   GstElement *sink = gst_element_factory_make_full ("s3sink",
     "name", "sink",
@@ -791,18 +792,31 @@ GST_START_TEST (test_retry_max_scale)
     "bucket", "two-tears-inna",
     "key", "some-key",
     "aws-sdk-request-timeout", 2000,
+    "aws-sdk-retry-max", 0,
+    NULL);
+
+  started = g_get_monotonic_time ();
+  scr = gst_element_set_state (sink, GST_STATE_READY);
+  stopped = g_get_monotonic_time ();
+  startup_time = ((gfloat)(stopped - started)) / 1000.0f;
+
+  GST_INFO ("Startup time: %f ms", startup_time);
+
+  g_object_set (sink,
     "aws-sdk-retry-max", 3,
     "aws-sdk-retry-scale", 25,
     NULL);
 
-  started = g_date_time_new_now_utc();
+  started = g_get_monotonic_time ();
   scr = gst_element_set_state (sink, GST_STATE_READY);
-  stopped = g_date_time_new_now_utc();
-  diff_ms = (gfloat) g_date_time_difference (stopped, started) / 1000.0f;
-
+  stopped = g_get_monotonic_time ();
   fail_unless (scr == GST_STATE_CHANGE_FAILURE);
-  fail_if (diff_ms > 300);
-  fail_if (diff_ms < 100);
+  diff_ms = ((gfloat)(stopped - started)) / 1000.0f;
+
+  GST_INFO ("State change returned %d, took %f ms", scr, diff_ms);
+
+  fail_if ((diff_ms - startup_time) > 300);
+  fail_if ((diff_ms - startup_time * 0.75f) < 150);
   gst_element_set_state (sink, GST_STATE_NULL);
   gst_clear_object (&sink);
 }
@@ -833,6 +847,7 @@ s3sink_suite (void)
   tcase_add_test (tc_chain, test_seek_to_middle_part_short);
   tcase_add_test (tc_chain, test_seek_to_middle_part_long);
   tcase_add_test (tc_chain, test_seek_to_first_part);
+  tcase_add_test (tc_chain, test_retry_max_scale);
 
   return s;
 }
