@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
@@ -39,7 +39,7 @@ jobs:
 
       - name: Install AWS C++ SDK
         run: |
-          vcpkg install aws-sdk-cpp[s3,sts] --binarysource="clear;x-gha,readwrite"
+          vcpkg install aws-sdk-cpp[s3,sts] --binarysource="clear;x-gha,readwrite" --triplet x64-windows
           echo "CMAKE_PREFIX_PATH=$Env:VCPKG_INSTALLATION_ROOT\installed\x64-windows" | Out-File -FilePath $Env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Build Amazon-S3 Plugin
@@ -55,10 +55,22 @@ jobs:
       - name: Generate NuGet packages
         run: |
             mkdir nupkgs
-            nuget.exe pack amazon-s3-gst-plugin.nuspec -Version ${{ steps.build_plugin.outputs.plugin_version }}.${{ github.run_number }} -OutputDirectory nupkgs
+
+            $version = "${{ steps.build_plugin.outputs.plugin_version }}"
+            if ("${{ (startsWith(github.ref, 'refs/tags/v') || ( github.event_name == 'release' && github.event.action == 'released' )) }}" -ne "true") {
+              $version += "-dev.${{ github.run_number }}"
+            }
+            $version += "+g${{ github.sha }}".Substring(0, 7)
+
+            nuget.exe pack Amazon-S3-Plugin.nuspec -Version $version -OutputDirectory nupkgs
+
+      - name: Upload NuGet packages
+        uses: actions/upload-artifact@v3
+        with:
+          name: nuget-packages
+          path: 'nupkgs/*.nupkg'
 
       - name: Publish
-        if: startsWith(github.ref, 'refs/tags/v')
         run: |
             Get-ChildItem ./nupkgs -filter "*.nupkg" | foreach{
               dotnet nuget push $_.FullName --skip-duplicate --api-key ${{ secrets.GITHUB_TOKEN }} --source https://nuget.pkg.github.com/blinemedical/index.json

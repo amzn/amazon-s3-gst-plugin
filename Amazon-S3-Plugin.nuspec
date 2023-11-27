@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <metadata>
+        <id>Amazon-S3-Plugin</id>
+        <version>$version$</version>
+        <description>Amazon Gstreamer S3 Plugin</description>
+        <authors> Thomas Goodwin, Lyra McMillan, Jeff Wilson, Sara Boule</authors>
+        <tags>Native, native</tags>
+    </metadata>
+    <files>
+        <file src="src\gstawscredentials.h" target="build\native\include" />
+        <file src="src\gstawscredentials.hpp" target="build\native\include" />
+        <file src="src\gsts3uploaderpartcache.hpp" target="build\native\include" />
+        <file src="build\src\gstawscredentials-1.0.lib" target="build\native\lib" />
+        <file src="build\src\gsts3elements.lib" target="build\native\lib" />
+        <file src="build\src\gstawscredentials-1.0.dll" target="runtimes\native" />
+        <file src="build\src\gsts3elements.dll" target="runtimes\native" />
+        <file src="Amazon-S3-Plugin.targets" target="build" />
+    </files>
+</package>
