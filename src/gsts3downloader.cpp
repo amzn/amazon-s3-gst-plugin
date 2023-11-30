@@ -158,7 +158,8 @@ struct _GstS3DefaultDownloader
 static void
 gst_s3_default_downloader_destroy (GstS3Downloader *downloader)
 {
-  delete DOWNLOADER_(downloader);
+  if (downloader)
+    delete DOWNLOADER_(downloader);
 }
 
 static size_t
