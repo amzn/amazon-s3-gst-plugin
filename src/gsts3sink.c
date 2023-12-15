@@ -957,7 +957,8 @@ gst_s3_sink_do_seek (GstS3Sink * sink, guint64 new_offset)
         goto cache_failed;
 
       memcpy(sink->buffer, next, next_size);
-      g_free(next);
+      if (*next)
+        g_free(next);
 
       // Assumption here is all preceding buffers, if they exist,
       // are the same size as the config states.
