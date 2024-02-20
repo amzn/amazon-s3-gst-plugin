@@ -24,7 +24,7 @@
 using gst::aws::s3::UploaderPartCache;
 
 #define TEST_BUFFER_NEW(s) (new char[s])
-#define TEST_BUFFER_FREE(b) {if (b) free(b); b = NULL;}
+#define TEST_BUFFER_FREE(b) {if (b) delete [] b; b = NULL;}
 
 GST_START_TEST(test_part_info) {
   UploaderPartCache::PartInfo uut;

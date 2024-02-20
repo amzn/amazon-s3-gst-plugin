@@ -190,7 +190,7 @@ public:
 
         void clear_buffer() {
             if (_buffer) {
-                free(_buffer);
+                delete [] _buffer;
             }
             _buffer = NULL;
         }
