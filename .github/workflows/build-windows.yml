@@ -28,7 +28,7 @@ jobs:
         id: setup_gstreamer
         uses: blinemedical/setup-gstreamer@v1
         with:
-          version: '1.22.7'
+          version: '1.22.9'
           arch: 'x86_64'
 
       - uses: actions/github-script@v6
