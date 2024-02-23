@@ -1,5 +1,5 @@
 project('amazon-s3-gst-plugin', 'c', 'cpp',
-  version : '0.2.1-lldc.6',
+  version : '0.2.1-lldc.7',
   default_options : [ 'warning_level=2',
                       'buildtype=debugoptimized' ])
 
