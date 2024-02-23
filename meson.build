@@ -34,7 +34,7 @@ configinc = include_directories('.')
 plugins_install_dir = join_paths(get_option('libdir'), 'gstreamer-1.0')
 
 core_conf = configuration_data()
-core_conf.set_quoted('VERSION', gst_s3_version)
+core_conf.set_quoted('VERSION', gst_base_dep.version())
 core_conf.set_quoted('PACKAGE', 'amazon-s3-gst-plugin')
 
 configure_file(output : 'config.h', configuration : core_conf)
