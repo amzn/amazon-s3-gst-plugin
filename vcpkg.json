@@ -1,0 +1,34 @@
+{
+    "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
+    "vcpkg-configuration": {
+      "default-registry": {
+        "kind": "git",
+        "baseline": "83972272512ce4ede5fc3b2ba98f6468b179f192",
+        "repository": "https://github.com/microsoft/vcpkg"
+      },
+      "registries": [
+        {
+          "kind": "artifact",
+          "location": "https://github.com/microsoft/vcpkg-ce-catalog/archive/refs/heads/main.zip",
+          "name": "microsoft"
+        }
+      ]
+    },
+    "dependencies": [
+      {
+        "name": "aws-sdk-cpp",
+        "default-features": false,
+        "features": [
+          "s3",
+          "sts"
+        ],
+        "version>=": "1.11"
+      },
+    ],
+    "overrides": [
+      {
+        "name": "aws-sdk-cpp",
+        "version": "1.11.225"
+      }
+    ]
+  }
