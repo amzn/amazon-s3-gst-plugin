@@ -39,8 +39,8 @@ jobs:
 
       - name: Install AWS C++ SDK
         run: |
-          vcpkg install --binarysource="clear;x-gha,readwrite" --triplet x64-windows 
-          echo "CMAKE_PREFIX_PATH=$Env:VCPKG_INSTALLATION_ROOT\installed\x64-windows" | Out-File -FilePath $Env:GITHUB_ENV -Append -Encoding utf8
+          vcpkg install --binarysource="clear;x-gha,readwrite" --triplet x64-windows
+          echo "CMAKE_PREFIX_PATH=$PWD\vcpkg_installed\x64-windows" | Out-File -FilePath $Env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Build Amazon-S3 Plugin
         id: build_plugin
