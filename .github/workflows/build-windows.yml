@@ -28,7 +28,7 @@ jobs:
         id: setup_gstreamer
         uses: blinemedical/setup-gstreamer@v1
         with:
-          version: '1.22.9'
+          version: '1.24.1'
           arch: 'x86_64'
 
       - uses: actions/github-script@v6
@@ -39,8 +39,8 @@ jobs:
 
       - name: Install AWS C++ SDK
         run: |
-          vcpkg install aws-sdk-cpp[s3,sts] --binarysource="clear;x-gha,readwrite" --triplet x64-windows
-          echo "CMAKE_PREFIX_PATH=$Env:VCPKG_INSTALLATION_ROOT\installed\x64-windows" | Out-File -FilePath $Env:GITHUB_ENV -Append -Encoding utf8
+          vcpkg install --binarysource="clear;x-gha,readwrite" --triplet x64-windows
+          echo "CMAKE_PREFIX_PATH=$PWD\vcpkg_installed\x64-windows" | Out-File -FilePath $Env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Build Amazon-S3 Plugin
         id: build_plugin
