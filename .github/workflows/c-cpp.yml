@@ -31,10 +31,13 @@ jobs:
           brew install --overwrite gstreamer
       - uses: actions/checkout@v3
       - run: pip3 install meson ninja
-      - run: 'git clone --recurse-submodules --depth 1 https://github.com/aws/aws-sdk-cpp.git -b 1.10.30'
-      - run: cmake -DBUILD_ONLY="s3;sts" aws-sdk-cpp
+      - run: 'git clone --recurse-submodules --depth 1 https://github.com/aws/aws-sdk-cpp.git -b 1.11.304'
+      - run: cmake -DCMAKE_PREFIX_PATH=/usr/local/ -DCMAKE_INSTALL_PREFIX=/usr/local/ -DBUILD_ONLY="s3;sts" aws-sdk-cpp
       - run: make -j 4
       - run: sudo make install
+      - name: Run ldconfig on linux
+        if: runner.os == 'Linux'
+        run: sudo ldconfig
       - run: meson build
       - run: ninja -C build
       - run: 'export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH'
