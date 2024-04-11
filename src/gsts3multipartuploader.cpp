@@ -68,6 +68,10 @@ public:
         va_end (varargs);
     }
 
+    void vaLog(Aws::Utils::Logging::LogLevel logLevel, const char* tag, const char* formatStr, va_list args) override
+    {
+    }
+
     void LogStream(Aws::Utils::Logging::LogLevel log_level, const char* tag, const Aws::OStringStream &message_stream) override
     {
         Log(log_level, tag, "%s", message_stream.str().c_str());
