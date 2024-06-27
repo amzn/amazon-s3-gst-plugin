@@ -19,7 +19,6 @@ endif
 
 apiversion = '1.0'
 
-glib_dep = dependency('glib-2.0')
 gst_dep = dependency('gstreamer-1.0', version : gst_req,
   fallback : ['gstreamer', 'gst_dep'])
 gst_base_dep = dependency('gstreamer-base-1.0', version : gst_req,
