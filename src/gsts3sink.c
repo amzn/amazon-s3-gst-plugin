@@ -306,7 +306,6 @@ static void
 gst_s3_sink_init (GstS3Sink * s3sink)
 {
   s3sink->config = GST_S3_UPLOADER_CONFIG_INIT;
-  s3sink->config.credentials = gst_aws_credentials_new_default ();
   s3sink->uploader = NULL;
   s3sink->downloader = NULL;
   s3sink->is_started = FALSE;
@@ -328,7 +327,8 @@ gst_s3_sink_release_config (GstS3UploaderConfig * config)
   g_free (config->content_type);
   g_free (config->ca_file);
   g_free (config->aws_sdk_endpoint);
-  gst_aws_credentials_free (config->credentials);
+  if (config->credentials)
+    gst_aws_credentials_free (config->credentials);
 
   *config = GST_S3_UPLOADER_CONFIG_INIT;
 }
@@ -532,6 +532,9 @@ gst_s3_sink_start (GstBaseSink * basesink)
       gst_s3_sink_is_null_or_empty (sink->config.bucket)
       || gst_s3_sink_is_null_or_empty (sink->config.key)))
     goto no_destination;
+
+  if (!sink->config.credentials)
+    sink->config.credentials = gst_aws_credentials_new_default ();
 
   if (sink->uploader == NULL) {
     sink->uploader = GST_S3_SINK_GET_CLASS((gpointer*) sink)->uploader_new (&sink->config);
