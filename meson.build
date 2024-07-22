@@ -1,5 +1,5 @@
 project('amazon-s3-gst-plugin', 'c', 'cpp',
-  version : '0.2.1-lldc.8',
+  version : '0.2.1-lldc.9',
   default_options : [ 'warning_level=2',
                       'buildtype=debugoptimized' ])
 
@@ -19,7 +19,6 @@ endif
 
 apiversion = '1.0'
 
-glib_dep = dependency('glib-2.0')
 gst_dep = dependency('gstreamer-1.0', version : gst_req,
   fallback : ['gstreamer', 'gst_dep'])
 gst_base_dep = dependency('gstreamer-base-1.0', version : gst_req,
