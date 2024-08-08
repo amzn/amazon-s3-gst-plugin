@@ -416,6 +416,7 @@ gst_s3_sink_set_property (GObject * object, guint prop_id,
     case PROP_CREDENTIALS:
       if (sink->config.credentials)
         gst_aws_credentials_free (sink->config.credentials);
+      GST_DEBUG ("Setting AWS credentials");
       sink->config.credentials = gst_aws_credentials_copy (g_value_get_boxed (value));
       break;
     case PROP_AWS_SDK_ENDPOINT:
@@ -533,8 +534,10 @@ gst_s3_sink_start (GstBaseSink * basesink)
       || gst_s3_sink_is_null_or_empty (sink->config.key)))
     goto no_destination;
 
-  if (!sink->config.credentials)
+  if (!sink->config.credentials) {
+    GST_DEBUG ("Using default AWS credentials");
     sink->config.credentials = gst_aws_credentials_new_default ();
+  }
 
   if (sink->uploader == NULL) {
     sink->uploader = GST_S3_SINK_GET_CLASS((gpointer*) sink)->uploader_new (&sink->config);

@@ -111,10 +111,12 @@ _gst_aws_credentials_create_provider(const gchar * access_key_id, const gchar * 
       GST_ERROR ("Either both access-key-id and secret-access-key must be set or none of them.");
       return NULL;
     }
+    GST_DEBUG ("Using default AWS credentials provider chain");
     return std::unique_ptr<AWSCredentialsProvider> (new DefaultAWSCredentialsProviderChain());
   }
   else
   {
+    GST_DEBUG ("Using simple AWS credentials provider");
     return std::unique_ptr<AWSCredentialsProvider> (
       new SimpleAWSCredentialsProvider (AWSCredentials(access_key_id, secret_access_key, session_token ? session_token : "")));
   }
@@ -160,8 +162,10 @@ _gst_aws_credentials_provider_from_string(const gchar * str)
     return NULL;
   }
 
-  if (!is_null_or_empty (iam_role))
+  if (!is_null_or_empty (iam_role)) {
+    GST_DEBUG ("Assuming role '%s'", iam_role);
     provider = _gst_aws_credentials_assume_role(iam_role, std::move(provider));
+  }
 
   g_strfreev (parameters);
 

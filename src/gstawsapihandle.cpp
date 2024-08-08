@@ -93,6 +93,7 @@ private:
 using gst::aws::AwsApiHandle;
 
 AwsApiHandle::AwsApiHandle() {
+    GST_CAT_DEBUG (gst_aws_s3_debug, "Initializing AWS API");
     ::Aws::Utils::Logging::InitializeAWSLogging(::std::make_shared<Logger>());
     ::Aws::SDKOptions options;
     ::Aws::InitAPI(options);
