@@ -109,6 +109,9 @@ AwsApiHandle::~AwsApiHandle()
 ::std::shared_ptr<AwsApiHandle> AwsApiHandle::GetHandle()
 {
     static ::std::weak_ptr<AwsApiHandle> instance;
+    static ::std::mutex mutex;
+
+    const ::std::lock_guard<::std::mutex> lock(mutex);
     if (auto ptr = instance.lock()) {
         return ptr;
     }
