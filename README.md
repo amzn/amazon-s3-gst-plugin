@@ -5,6 +5,15 @@
 A collection of [GStreamer](https://gstreamer.freedesktop.org/) elements to interact
 with the [Amazon Simple Storage Service (S3)](https://aws.amazon.com/s3/).
 
+## Important
+Amazon S3 Gst Plugin is no longer being developed. 
+
+For your future development needs, we recommend utilising the officially maintained AWS plugins for GStreamer. These can be found in the GStreamer Rust-based plugins repository at:
+
+https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs/-/tree/main/net/aws
+
+These plugins are actively maintained and offer robust support for AWS integration with GStreamer.
+
 ## Getting started
 ### Setting up dependencies
 Following dependencies are required to build the project:
